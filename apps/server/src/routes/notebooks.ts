@@ -3,6 +3,7 @@ import fs from "node:fs";
 import { Router } from "express";
 import { prisma, SourceType } from "@chaibooklm/shared";
 import { z } from "zod";
+import { getOwnedNotebook } from "../lib/ownership.ts";
 import { deleteCollection, ensureCollection } from "../lib/qdrant.ts";
 import { requireAuth } from "../middleware/requireAuth.ts";
 
@@ -20,9 +21,7 @@ notebooksRouter.get("/", async (req, res) => {
 });
 
 notebooksRouter.get("/:id", async (req, res) => {
-	const notebook = await prisma.notebook.findFirst({
-		where: { id: req.params.id, userId: req.userId },
-	});
+	const notebook = await getOwnedNotebook(req.params.id, req.userId);
 	if (!notebook) return res.status(404).json({ error: "Notebook not found" });
 	res.json(notebook);
 });
@@ -60,9 +59,7 @@ notebooksRouter.patch("/:id", async (req, res) => {
 });
 
 notebooksRouter.delete("/:id", async (req, res) => {
-	const notebook = await prisma.notebook.findFirst({
-		where: { id: req.params.id, userId: req.userId },
-	});
+	const notebook = await getOwnedNotebook(req.params.id, req.userId);
 	if (!notebook) return res.status(404).json({ error: "Notebook not found" });
 
 	// Postgres cascade deletes Source/Chunk rows, but uploaded PDF files on disk

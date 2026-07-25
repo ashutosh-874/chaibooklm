@@ -26,6 +26,11 @@ export const config = {
 		chunkSize: Number(process.env.CHUNK_SIZE) || 1000,
 		chunkOverlap: Number(process.env.CHUNK_OVERLAP) || 200,
 	},
+	retrieval: {
+		topK: Number(process.env.RETRIEVAL_TOP_K) || 4, // per-query-variant candidates from Qdrant
+		rrfK: Number(process.env.RRF_K) || 60, // Reciprocal Rank Fusion constant
+		finalK: Number(process.env.RETRIEVAL_FINAL_K) || 5, // chunks kept after fusion
+	},
 	jwt: {
 		secret: process.env.JWT_SECRET || "",
 		expiresIn: process.env.JWT_EXPIRES_IN || "7d",

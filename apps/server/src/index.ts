@@ -4,6 +4,7 @@ import cors from "cors";
 import express from "express";
 import { authRouter } from "./routes/auth.ts";
 import { notebooksRouter } from "./routes/notebooks.ts";
+import { queryRouter } from "./routes/query.ts";
 import { sourcesRouter } from "./routes/sources.ts";
 
 const app = express();
@@ -15,6 +16,7 @@ app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.use("/auth", authRouter);
 app.use("/notebooks", notebooksRouter);
 app.use("/notebooks/:notebookId/sources", sourcesRouter);
+app.use("/notebooks/:notebookId/query", queryRouter);
 
 // biome-ignore lint: express error middleware needs all 4 params to be recognized
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

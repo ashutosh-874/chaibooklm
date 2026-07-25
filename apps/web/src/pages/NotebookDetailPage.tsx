@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.tsx";
 import { api, ApiError, type Notebook, type Source } from "../lib/api.ts";
+import { type Citation, streamQuery } from "../lib/queryStream.ts";
 
 // Sources still being processed -> keep polling; once every source has
 // settled (READY or FAILED) the list is quiet and polling can stop.
@@ -21,6 +22,12 @@ export function NotebookDetailPage() {
 	const [submittingText, setSubmittingText] = useState(false);
 	const [submittingPdf, setSubmittingPdf] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
+
+	const [chatQuery, setChatQuery] = useState("");
+	const [answer, setAnswer] = useState("");
+	const [citations, setCitations] = useState<Citation[]>([]);
+	const [asking, setAsking] = useState(false);
+	const [chatError, setChatError] = useState<string | null>(null);
 
 	const refreshSources = useCallback(async () => {
 		if (!token || !id) return;
@@ -100,6 +107,29 @@ export function NotebookDetailPage() {
 		}
 	}
 
+	async function handleAsk(e: React.FormEvent) {
+		e.preventDefault();
+		if (!token || !id || !chatQuery.trim() || asking) return;
+		setAsking(true);
+		setAnswer("");
+		setCitations([]);
+		setChatError(null);
+		try {
+			await streamQuery(token, id, chatQuery.trim(), {
+				onToken: (t) => setAnswer((prev) => prev + t),
+				onCitations: setCitations,
+				onDone: () => setAsking(false),
+				onError: (message) => {
+					setChatError(message);
+					setAsking(false);
+				},
+			});
+		} catch (err) {
+			setChatError(err instanceof Error ? err.message : "Query failed");
+			setAsking(false);
+		}
+	}
+
 	return (
 		<div className="notebook-detail-page">
 			<Link to="/">&larr; Notebooks</Link>
@@ -158,6 +188,36 @@ export function NotebookDetailPage() {
 						</li>
 					))}
 				</ul>
+			)}
+
+			<h2>Ask a question</h2>
+			<form className="chat-form" onSubmit={handleAsk}>
+				<input
+					type="text"
+					placeholder="Ask something about this notebook's sources…"
+					value={chatQuery}
+					onChange={(e) => setChatQuery(e.target.value)}
+				/>
+				<button type="submit" disabled={asking || !chatQuery.trim()}>
+					{asking ? "Thinking…" : "Ask"}
+				</button>
+			</form>
+
+			{chatError && <p className="error">{chatError}</p>}
+
+			{answer && (
+				<div className="chat-answer">
+					<p>{answer}</p>
+					{citations.length > 0 && (
+						<ul className="citation-list">
+							{citations.map((c) => (
+								<li key={c.chunkId}>
+									[{c.n}] {c.sourceTitle} ({c.sourceType})
+								</li>
+							))}
+						</ul>
+					)}
+				</div>
 			)}
 		</div>
 	);

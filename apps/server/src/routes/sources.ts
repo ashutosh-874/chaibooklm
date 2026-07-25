@@ -6,6 +6,7 @@ import { prisma, SourceStatus, SourceType } from "@chaibooklm/shared";
 import { Router } from "express";
 import multer from "multer";
 import { z } from "zod";
+import { getOwnedNotebook } from "../lib/ownership.ts";
 import { enqueueIngestJob } from "../lib/queue.ts";
 import { deleteSourcePoints } from "../lib/qdrant.ts";
 import { requireAuth } from "../middleware/requireAuth.ts";
@@ -37,12 +38,6 @@ const textSourceSchema = z.object({
 	title: z.string().trim().min(1).max(200).optional(),
 	text: z.string().trim().min(1),
 });
-
-// Ownership check reused by every route below: a source's notebook must
-// belong to the authenticated user, or the route 404s (never leaks existence).
-async function getOwnedNotebook(notebookId: string, userId?: string) {
-	return prisma.notebook.findFirst({ where: { id: notebookId, userId } });
-}
 
 sourcesRouter.get("/", async (req, res) => {
 	const notebook = await getOwnedNotebook(req.params.notebookId as string, req.userId);
