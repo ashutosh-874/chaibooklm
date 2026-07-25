@@ -248,5 +248,69 @@ button {
 	flex-direction: column;
 	gap: 4px;
 	font-size: 13px;
-	color: #555;
+}
+
+.citation-chip {
+	background: none;
+	border: none;
+	color: #5b5bd6;
+	text-decoration: underline;
+	cursor: pointer;
+	padding: 0;
+	font-size: 13px;
+	text-align: left;
+}
+
+.modal-backdrop {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 100;
+}
+
+.modal-panel {
+	background: white;
+	border-radius: 8px;
+	padding: 20px;
+	max-width: 720px;
+	width: 90%;
+	max-height: 85vh;
+	overflow-y: auto;
+}
+
+.modal-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 16px;
+}
+
+.modal-header h2 {
+	margin: 0;
+	font-size: 16px;
+}
+
+.text-viewer {
+	line-height: 1.6;
+	white-space: pre-wrap;
+}
+
+.text-viewer mark {
+	background: #fff2a8;
+	padding: 2px 0;
+}
+
+.pdf-viewer {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+}
+
+.pdf-page-label {
+	font-size: 13px;
+	color: #666;
 }

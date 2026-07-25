@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.tsx";
+import { SourceViewer } from "../components/SourceViewer.tsx";
 import { api, ApiError, type Notebook, type Source } from "../lib/api.ts";
 import { type Citation, streamQuery } from "../lib/queryStream.ts";
 
@@ -28,6 +29,7 @@ export function NotebookDetailPage() {
 	const [citations, setCitations] = useState<Citation[]>([]);
 	const [asking, setAsking] = useState(false);
 	const [chatError, setChatError] = useState<string | null>(null);
+	const [viewingCitation, setViewingCitation] = useState<Citation | null>(null);
 
 	const refreshSources = useCallback(async () => {
 		if (!token || !id) return;
@@ -212,12 +214,24 @@ export function NotebookDetailPage() {
 						<ul className="citation-list">
 							{citations.map((c) => (
 								<li key={c.chunkId}>
-									[{c.n}] {c.sourceTitle} ({c.sourceType})
+									<button type="button" className="citation-chip" onClick={() => setViewingCitation(c)}>
+										[{c.n}] {c.sourceTitle} ({c.sourceType})
+									</button>
 								</li>
 							))}
 						</ul>
 					)}
 				</div>
+			)}
+
+			{viewingCitation && token && id && (
+				<SourceViewer
+					token={token}
+					notebookId={id}
+					citation={viewingCitation}
+					source={sources.find((s) => s.id === viewingCitation.sourceId)}
+					onClose={() => setViewingCitation(null)}
+				/>
 			)}
 		</div>
 	);

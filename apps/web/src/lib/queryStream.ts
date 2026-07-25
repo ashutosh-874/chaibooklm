@@ -1,3 +1,5 @@
+import type { Locator, SourceType } from "./api.ts";
+
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 export interface Citation {
@@ -5,8 +7,8 @@ export interface Citation {
 	chunkId: string;
 	sourceId: string;
 	sourceTitle: string;
-	sourceType: string;
-	locator: unknown;
+	sourceType: SourceType;
+	locator: Locator;
 }
 
 interface StreamCallbacks {

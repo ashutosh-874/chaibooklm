@@ -81,6 +81,24 @@ sourcesRouter.post("/", upload.single("file"), async (req, res) => {
 	res.status(202).json(source);
 });
 
+// Serves the raw PDF bytes so the web Source Viewer can render it (react-pdf
+// needs the actual file, not just metadata). TEXT sources need no equivalent —
+// their content is the `originIdentifier` string already returned by GET /.
+sourcesRouter.get("/:sourceId/file", async (req, res) => {
+	const notebook = await getOwnedNotebook(req.params.notebookId as string, req.userId);
+	if (!notebook) return res.status(404).json({ error: "Notebook not found" });
+
+	const source = await prisma.source.findFirst({
+		where: { id: req.params.sourceId, notebookId: notebook.id, type: SourceType.PDF },
+	});
+	if (!source) return res.status(404).json({ error: "PDF source not found" });
+
+	res.type("application/pdf");
+	res.sendFile(source.originIdentifier, (err) => {
+		if (err && !res.headersSent) res.status(404).json({ error: "File no longer exists on disk" });
+	});
+});
+
 sourcesRouter.delete("/:sourceId", async (req, res) => {
 	const notebook = await getOwnedNotebook(req.params.notebookId as string, req.userId);
 	if (!notebook) return res.status(404).json({ error: "Notebook not found" });

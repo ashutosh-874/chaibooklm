@@ -51,8 +51,17 @@ export interface Source {
 	title: string;
 	status: SourceStatus;
 	errorMessage: string | null;
+	// File path on disk for PDF, the raw submitted string for TEXT.
+	originIdentifier: string;
 	createdAt: string;
 	updatedAt: string;
+}
+
+// Shape depends on source type: PDF chunks carry `page`, TEXT chunks don't.
+export interface Locator {
+	page?: number;
+	charStart: number;
+	charEnd: number;
 }
 
 export const api = {
@@ -92,4 +101,13 @@ export const api = {
 		request<void>(`/notebooks/${notebookId}/sources/${sourceId}`, { method: "DELETE" }, token),
 	reindexSource: (token: string, notebookId: string, sourceId: string) =>
 		request<{ message: string }>(`/notebooks/${notebookId}/sources/${sourceId}/reindex`, { method: "POST" }, token),
+
+	// Not routed through request() — this returns raw PDF bytes, not JSON.
+	async fetchSourceFile(token: string, notebookId: string, sourceId: string): Promise<ArrayBuffer> {
+		const res = await fetch(`${API_URL}/notebooks/${notebookId}/sources/${sourceId}/file`, {
+			headers: { Authorization: `Bearer ${token}` },
+		});
+		if (!res.ok) throw new ApiError(res.status, `Failed to load PDF (${res.status})`);
+		return res.arrayBuffer();
+	},
 };
