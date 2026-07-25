@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
+import fs from "node:fs";
 import { Router } from "express";
-import { prisma } from "@chaibooklm/shared";
+import { prisma, SourceType } from "@chaibooklm/shared";
 import { z } from "zod";
 import { deleteCollection, ensureCollection } from "../lib/qdrant.ts";
 import { requireAuth } from "../middleware/requireAuth.ts";
@@ -16,6 +17,14 @@ notebooksRouter.get("/", async (req, res) => {
 		orderBy: { createdAt: "desc" },
 	});
 	res.json(notebooks);
+});
+
+notebooksRouter.get("/:id", async (req, res) => {
+	const notebook = await prisma.notebook.findFirst({
+		where: { id: req.params.id, userId: req.userId },
+	});
+	if (!notebook) return res.status(404).json({ error: "Notebook not found" });
+	res.json(notebook);
 });
 
 notebooksRouter.post("/", async (req, res) => {
@@ -55,6 +64,14 @@ notebooksRouter.delete("/:id", async (req, res) => {
 		where: { id: req.params.id, userId: req.userId },
 	});
 	if (!notebook) return res.status(404).json({ error: "Notebook not found" });
+
+	// Postgres cascade deletes Source/Chunk rows, but uploaded PDF files on disk
+	// need an explicit cleanup pass first (best-effort; a missing file is fine).
+	const pdfSources = await prisma.source.findMany({
+		where: { notebookId: notebook.id, type: SourceType.PDF },
+		select: { originIdentifier: true },
+	});
+	await Promise.all(pdfSources.map((s) => fs.promises.unlink(s.originIdentifier).catch(() => {})));
 
 	await deleteCollection(notebook.qdrantCollection);
 	await prisma.notebook.delete({ where: { id: notebook.id } });

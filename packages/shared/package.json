@@ -8,6 +8,7 @@
   "dependencies": {
     "@prisma/client": "^7.9.0",
     "@prisma/adapter-pg": "^7.9.0",
+    "@qdrant/js-client-rest": "^1.18.0",
     "pg": "^8.22.0",
     "dotenv": "^17.4.2"
   }

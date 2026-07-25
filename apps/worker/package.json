@@ -4,6 +4,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "echo \"worker not implemented yet (Phase 2)\" && exit 1"
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts"
+  },
+  "dependencies": {
+    "@chaibooklm/shared": "workspace:*",
+    "@qdrant/js-client-rest": "^1.18.0",
+    "bullmq": "^5.81.2",
+    "openai": "^6.49.0",
+    "pdf-parse": "^2.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1"
   }
 }

@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthContext.tsx";
 import { ProtectedRoute } from "./components/ProtectedRoute.tsx";
 import { LoginPage } from "./pages/LoginPage.tsx";
+import { NotebookDetailPage } from "./pages/NotebookDetailPage.tsx";
 import { NotebooksPage } from "./pages/NotebooksPage.tsx";
 import { SignupPage } from "./pages/SignupPage.tsx";
 
@@ -13,6 +14,7 @@ export function App() {
 				<Route path="/signup" element={<SignupPage />} />
 				<Route element={<ProtectedRoute />}>
 					<Route path="/" element={<NotebooksPage />} />
+					<Route path="/notebooks/:id" element={<NotebookDetailPage />} />
 				</Route>
 				<Route path="*" element={<Navigate to="/" replace />} />
 			</Routes>

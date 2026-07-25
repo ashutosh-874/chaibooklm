@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.tsx";
 import { api, ApiError, type Notebook } from "../lib/api.ts";
 
@@ -92,7 +93,7 @@ export function NotebooksPage() {
 				<ul className="notebook-list">
 					{notebooks.map((notebook) => (
 						<li key={notebook.id}>
-							<span>{notebook.name}</span>
+							<Link to={`/notebooks/${notebook.id}`}>{notebook.name}</Link>
 							<div>
 								<button type="button" onClick={() => handleRename(notebook)}>
 									Rename
