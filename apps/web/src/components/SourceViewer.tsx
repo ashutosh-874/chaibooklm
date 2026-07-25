@@ -16,7 +16,9 @@ export function SourceViewer({ token, notebookId, citation, source, onClose }: S
 		? `page ${citation.locator.page}`
 		: citation.locator.sourceUrl
 			? "web page"
-			: "text";
+			: citation.locator.videoId
+				? `${Math.floor((citation.locator.startSec ?? 0) / 60)}:${String(Math.floor((citation.locator.startSec ?? 0) % 60)).padStart(2, "0")}`
+				: "text";
 
 	return (
 		<div className="dialog-backdrop" onClick={onClose}>
@@ -64,6 +66,21 @@ export function SourceViewer({ token, notebookId, citation, source, onClose }: S
 								</a>
 							</p>
 						)}
+					</div>
+				) : citation.sourceType === "YOUTUBE" && citation.locator.videoId ? (
+					<div>
+						<div style={{ position: "relative", width: "100%", paddingTop: "56.25%" }}>
+							<iframe
+								src={`https://www.youtube.com/embed/${citation.locator.videoId}?start=${Math.floor(citation.locator.startSec ?? 0)}`}
+								title={citation.sourceTitle}
+								allow="autoplay; encrypted-media; picture-in-picture"
+								allowFullScreen
+								style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0, borderRadius: "8px" }}
+							/>
+						</div>
+						<p className="text-muted" style={{ fontSize: "13px", marginTop: "12px", lineHeight: "1.6" }}>
+							{citation.text}
+						</p>
 					</div>
 				) : (
 					<p>Viewer for {citation.sourceType} sources isn't built yet.</p>

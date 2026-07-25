@@ -58,12 +58,15 @@ export interface Source {
 }
 
 // Shape depends on source type: PDF chunks carry `page`, URL chunks carry
-// `sourceUrl`, TEXT chunks carry neither.
+// `sourceUrl`, YOUTUBE chunks carry `startSec`/`endSec`/`videoId`, TEXT chunks carry none of these.
 export interface Locator {
 	page?: number;
 	charStart: number;
 	charEnd: number;
 	sourceUrl?: string;
+	startSec?: number;
+	endSec?: number;
+	videoId?: string;
 }
 
 export const api = {
@@ -103,6 +106,12 @@ export const api = {
 		request<Source>(
 			`/notebooks/${notebookId}/sources`,
 			{ method: "POST", body: JSON.stringify({ url, title }) },
+			token,
+		),
+	createYoutubeSource: (token: string, notebookId: string, video: string, title?: string) =>
+		request<Source>(
+			`/notebooks/${notebookId}/sources`,
+			{ method: "POST", body: JSON.stringify({ video, title }) },
 			token,
 		),
 	deleteSource: (token: string, notebookId: string, sourceId: string) =>

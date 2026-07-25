@@ -27,6 +27,9 @@ export function NotebookDetailPage() {
 	const [url, setUrl] = useState("");
 	const [urlTitle, setUrlTitle] = useState("");
 	const [submittingUrl, setSubmittingUrl] = useState(false);
+	const [youtubeVideo, setYoutubeVideo] = useState("");
+	const [youtubeTitle, setYoutubeTitle] = useState("");
+	const [submittingYoutube, setSubmittingYoutube] = useState(false);
 
 	const [chatQuery, setChatQuery] = useState("");
 	const [chatQuerySubmitted, setChatQuerySubmitted] = useState("");
@@ -107,6 +110,23 @@ export function NotebookDetailPage() {
 			setError(err instanceof ApiError ? err.message : "Failed to add web page");
 		} finally {
 			setSubmittingUrl(false);
+		}
+	}
+
+	async function handleAddYoutube(e: React.FormEvent) {
+		e.preventDefault();
+		if (!token || !id || !youtubeVideo.trim()) return;
+		setSubmittingYoutube(true);
+		setError(null);
+		try {
+			const source = await api.createYoutubeSource(token, id, youtubeVideo.trim(), youtubeTitle.trim() || undefined);
+			setSources((prev) => [source, ...prev]);
+			setYoutubeVideo("");
+			setYoutubeTitle("");
+		} catch (err) {
+			setError(err instanceof ApiError ? err.message : "Failed to add YouTube video");
+		} finally {
+			setSubmittingYoutube(false);
 		}
 	}
 
@@ -232,7 +252,7 @@ export function NotebookDetailPage() {
 									return (
 										<div key={source.id} style={{ display: "flex", alignItems: "flex-start", gap: "10px", padding: "11px 0", borderBottom: "1px solid var(--color-divider)" }}>
 											<div style={{ width: "30px", height: "30px", flex: "none", borderRadius: "7px", background: "var(--color-neutral-800)", color: "var(--color-neutral-200)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "9px", fontWeight: 700, letterSpacing: ".02em" }}>
-												{source.type === "PDF" ? "PDF" : source.type === "URL" ? "URL" : "TXT"}
+												{source.type === "PDF" ? "PDF" : source.type === "URL" ? "URL" : source.type === "YOUTUBE" ? "YT" : "TXT"}
 											</div>
 											
 											<div style={{ flex: 1, minWidth: 0 }}>
@@ -348,7 +368,13 @@ export function NotebookDetailPage() {
 																	{c.sourceTitle}
 																</span>
 																<span className="text-muted" style={{ fontSize: "11px" }}>
-																	{c.locator.page ? `p. ${c.locator.page}` : c.locator.sourceUrl ? "web" : "text"}
+																	{c.locator.page
+																	? `p. ${c.locator.page}`
+																	: c.locator.sourceUrl
+																		? "web"
+																		: c.locator.videoId
+																			? `${Math.floor((c.locator.startSec ?? 0) / 60)}:${String(Math.floor((c.locator.startSec ?? 0) % 60)).padStart(2, "0")}`
+																			: "text"}
 																</span>
 															</button>
 														))}
@@ -408,6 +434,12 @@ export function NotebookDetailPage() {
 				setUrl={setUrl}
 				handleAddUrl={handleAddUrl}
 				submittingUrl={submittingUrl}
+				youtubeTitle={youtubeTitle}
+				setYoutubeTitle={setYoutubeTitle}
+				youtubeVideo={youtubeVideo}
+				setYoutubeVideo={setYoutubeVideo}
+				handleAddYoutube={handleAddYoutube}
+				submittingYoutube={submittingYoutube}
 			/>
 
 			{/* Source Viewer Modal Dialog */}

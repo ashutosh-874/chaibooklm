@@ -18,6 +18,12 @@ interface AddSourceModalProps {
 	setUrl: (val: string) => void;
 	handleAddUrl: (e: React.FormEvent) => Promise<void>;
 	submittingUrl: boolean;
+	youtubeTitle: string;
+	setYoutubeTitle: (val: string) => void;
+	youtubeVideo: string;
+	setYoutubeVideo: (val: string) => void;
+	handleAddYoutube: (e: React.FormEvent) => Promise<void>;
+	submittingYoutube: boolean;
 }
 
 export function AddSourceModal({
@@ -38,8 +44,14 @@ export function AddSourceModal({
 	setUrl,
 	handleAddUrl,
 	submittingUrl,
+	youtubeTitle,
+	setYoutubeTitle,
+	youtubeVideo,
+	setYoutubeVideo,
+	handleAddYoutube,
+	submittingYoutube,
 }: AddSourceModalProps) {
-	const [activeTab, setActiveTab] = useState<"SELECT" | "PDF" | "TEXT" | "URL">("SELECT");
+	const [activeTab, setActiveTab] = useState<"SELECT" | "PDF" | "TEXT" | "URL" | "YOUTUBE">("SELECT");
 
 	if (!isOpen) return null;
 
@@ -68,6 +80,13 @@ export function AddSourceModal({
 		setActiveTab("SELECT");
 	};
 
+	const onYoutubeSubmit = async (e: React.FormEvent) => {
+		e.preventDefault();
+		await handleAddYoutube(e);
+		onClose();
+		setActiveTab("SELECT");
+	};
+
 	return (
 		<div className="dialog-backdrop" onClick={onClose}>
 			<div className="dialog" style={{ width: "min(560px, 100%)" }} onClick={(e) => e.stopPropagation()}>
@@ -86,6 +105,7 @@ export function AddSourceModal({
 							{activeTab === "PDF" && "Upload PDF"}
 							{activeTab === "TEXT" && "Paste text"}
 							{activeTab === "URL" && "Add web page"}
+							{activeTab === "YOUTUBE" && "Add YouTube video"}
 						</div>
 					</div>
 					<button type="button" className="btn btn-ghost btn-icon" aria-label="Close" onClick={onClose}>
@@ -99,7 +119,7 @@ export function AddSourceModal({
 				{activeTab === "SELECT" && (
 					<>
 						<div className="dialog-body" style={{ margin: 0, fontSize: "14px", opacity: 0.85 }}>
-							Choose a source type. PDF, Text and URL are ready today; YouTube and VTT are coming in a later phase.
+							Choose a source type. PDF, Text, URL and YouTube are ready today; VTT is coming in a later phase.
 						</div>
 						<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginTop: "10px" }}>
 							{/* PDF Tile */}
@@ -177,10 +197,9 @@ export function AddSourceModal({
 								<span style={{ fontSize: "13px", fontWeight: 500, marginTop: "4px" }}>Web page</span>
 							</button>
 
-							{/* YouTube Tile (Soon) */}
+							{/* YouTube Tile */}
 							<button
 								type="button"
-								disabled
 								style={{
 									display: "flex",
 									flexDirection: "column",
@@ -191,20 +210,16 @@ export function AddSourceModal({
 									border: "1px solid var(--color-divider)",
 									background: "var(--color-surface)",
 									color: "var(--color-text)",
-									cursor: "not-allowed",
+									cursor: "pointer",
 									textAlign: "left",
 									width: "100%",
-									opacity: 0.55,
-									position: "relative",
 								}}
+								onClick={() => setActiveTab("YOUTUBE")}
 							>
 								<span style={{ width: "30px", height: "30px", borderRadius: "7px", background: "var(--color-neutral-800)", color: "var(--color-neutral-200)", display: "flex", alignItems: "center", justifyCenter: "center", justifyContent: "center", fontSize: "9px", fontWeight: 700, letterSpacing: ".02em" }}>
 									YT
 								</span>
-								<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", marginTop: "4px" }}>
-									<span style={{ fontSize: "13px", fontWeight: 500 }}>YouTube link</span>
-									<span className="tag tag-neutral" style={{ fontSize: "9px", padding: "2px 6px" }}>Soon</span>
-								</div>
+								<span style={{ fontSize: "13px", fontWeight: 500, marginTop: "4px" }}>YouTube link</span>
 							</button>
 
 							{/* VTT Tile (Soon) */}
@@ -333,6 +348,42 @@ export function AddSourceModal({
 							</button>
 							<button type="submit" className="btn btn-primary" disabled={submittingUrl || !url.trim()}>
 								{submittingUrl ? "Adding…" : "Add web page"}
+							</button>
+						</div>
+					</form>
+				)}
+
+				{activeTab === "YOUTUBE" && (
+					<form onSubmit={onYoutubeSubmit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+						<div className="field">
+							<label htmlFor="youtube-title">Title (optional)</label>
+							<input
+								id="youtube-title"
+								className="input"
+								type="text"
+								placeholder="e.g. Lecture recording"
+								value={youtubeTitle}
+								onChange={(e) => setYoutubeTitle(e.target.value)}
+							/>
+						</div>
+						<div className="field">
+							<label htmlFor="youtube-value">Video URL or ID</label>
+							<input
+								id="youtube-value"
+								className="input"
+								type="text"
+								placeholder="https://www.youtube.com/watch?v=…"
+								value={youtubeVideo}
+								onChange={(e) => setYoutubeVideo(e.target.value)}
+								required
+							/>
+						</div>
+						<div className="dialog-actions" style={{ marginTop: "12px" }}>
+							<button type="button" className="btn btn-secondary" onClick={handleBack}>
+								Back
+							</button>
+							<button type="submit" className="btn btn-primary" disabled={submittingYoutube || !youtubeVideo.trim()}>
+								{submittingYoutube ? "Adding…" : "Add YouTube video"}
 							</button>
 						</div>
 					</form>

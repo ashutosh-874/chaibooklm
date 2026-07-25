@@ -3,7 +3,8 @@ import { prisma, SourceStatus, SourceType } from "@chaibooklm/shared";
 import { extractPdf } from "../extractors/pdf.ts";
 import { extractText } from "../extractors/text.ts";
 import { extractUrl } from "../extractors/url.ts";
-import { buildChunks } from "../lib/chunk.ts";
+import { extractYoutube } from "../extractors/youtube.ts";
+import { buildChunks, chunkTimedSegments } from "../lib/chunk.ts";
 import { embedTexts } from "../lib/openai.ts";
 import { deleteSourcePoints, ensureCollection, upsertPoints } from "../lib/qdrant.ts";
 
@@ -23,25 +24,38 @@ export async function ingestSource(sourceId: string) {
 
 	try {
 		// originIdentifier holds a disk path for PDFs, the raw text itself for
-		// TEXT, and the URL itself for URL sources.
+		// TEXT, the URL itself for URL sources, and the video ID for YouTube sources.
 		let title = source.title;
 		let sourceUrl = source.originIdentifier; // overwritten below with the post-redirect URL, for URL sources
-		let pages: Awaited<ReturnType<typeof extractPdf>>;
-		if (source.type === SourceType.PDF) {
-			pages = await extractPdf(source.originIdentifier);
-		} else if (source.type === SourceType.URL) {
-			const result = await extractUrl(source.originIdentifier);
-			pages = result.pages;
-			sourceUrl = result.finalUrl;
-			// Server set title=url as a placeholder when the user didn't provide one —
-			// only overwrite it with the page's real title in that case, never a
-			// title the user explicitly chose.
+		let chunks: Array<{ text: string; locator: Record<string, string | number | null> }>;
+
+		if (source.type === SourceType.YOUTUBE) {
+			const result = await extractYoutube(source.originIdentifier);
+			// Server set title=videoId as a placeholder when the user didn't provide
+			// one — only overwrite it in that case, never a user-chosen title.
 			if (result.title && title === source.originIdentifier) title = result.title;
+			chunks = chunkTimedSegments(result.segments).map((c) => ({
+				text: c.text,
+				locator: { ...c.locator, videoId: source.originIdentifier },
+			}));
 		} else {
-			pages = extractText(source.originIdentifier);
+			let pages: Awaited<ReturnType<typeof extractPdf>>;
+			if (source.type === SourceType.PDF) {
+				pages = await extractPdf(source.originIdentifier);
+			} else if (source.type === SourceType.URL) {
+				const result = await extractUrl(source.originIdentifier);
+				pages = result.pages;
+				sourceUrl = result.finalUrl;
+				// Server set title=url as a placeholder when the user didn't provide one —
+				// only overwrite it with the page's real title in that case, never a
+				// title the user explicitly chose.
+				if (result.title && title === source.originIdentifier) title = result.title;
+			} else {
+				pages = extractText(source.originIdentifier);
+			}
+			chunks = buildChunks(pages);
 		}
 
-		const chunks = buildChunks(pages);
 		if (chunks.length === 0) {
 			throw new Error("No extractable text found in this source");
 		}

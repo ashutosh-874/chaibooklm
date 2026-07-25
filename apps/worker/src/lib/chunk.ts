@@ -41,6 +41,45 @@ function chunkTextWithOffsets(
 	return chunks;
 }
 
+export interface TimedSegment {
+	start: number;
+	dur: number;
+	text: string;
+}
+
+export interface TimedLocatedChunk {
+	text: string;
+	locator: { startSec: number; endSec: number };
+}
+
+// Same greedy accumulate-to-maxChars idea as chunkTextWithOffsets, but grouping
+// timed transcript segments instead of raw characters — each chunk's locator
+// has to be a real seekable time range, so we can't chunk on char offsets alone.
+export function chunkTimedSegments(segments: TimedSegment[], maxChars = config.chunking.chunkSize): TimedLocatedChunk[] {
+	const chunks: TimedLocatedChunk[] = [];
+	let buffer = "";
+	let startSec: number | null = null;
+	let endSec = 0;
+
+	for (const seg of segments) {
+		const text = seg.text.trim();
+		if (!text) continue;
+
+		if (buffer && buffer.length + 1 + text.length > maxChars) {
+			chunks.push({ text: buffer, locator: { startSec: startSec ?? 0, endSec } });
+			buffer = "";
+			startSec = null;
+		}
+
+		if (startSec === null) startSec = seg.start;
+		buffer = buffer ? `${buffer} ${text}` : text;
+		endSec = seg.start + seg.dur;
+	}
+
+	if (buffer) chunks.push({ text: buffer, locator: { startSec: startSec ?? 0, endSec } });
+	return chunks;
+}
+
 export interface LocatedChunk {
 	text: string;
 	locator: { page: number; charStart: number; charEnd: number } | { charStart: number; charEnd: number };

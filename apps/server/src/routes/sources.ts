@@ -47,6 +47,23 @@ const urlSourceSchema = z.object({
 	url: z.url().refine((u) => u.startsWith("http://") || u.startsWith("https://"), "URL must be http(s)"),
 });
 
+const youtubeSourceSchema = z.object({
+	title: z.string().trim().min(1).max(200).optional(),
+	video: z.string().trim().min(1),
+});
+
+// Pulls the 11-char video ID out of common YouTube URL forms, or accepts a bare ID.
+function extractYoutubeId(input: string): string | null {
+	const trimmed = input.trim();
+	if (/^[\w-]{11}$/.test(trimmed)) return trimmed;
+	const patterns = [/[?&]v=([\w-]{11})/, /youtu\.be\/([\w-]{11})/, /youtube\.com\/shorts\/([\w-]{11})/, /youtube\.com\/embed\/([\w-]{11})/];
+	for (const pattern of patterns) {
+		const match = trimmed.match(pattern);
+		if (match) return match[1];
+	}
+	return null;
+}
+
 sourcesRouter.get("/", async (req, res) => {
 	const notebook = await getOwnedNotebook(req.params.notebookId as string, req.userId);
 	if (!notebook) return res.status(404).json({ error: "Notebook not found" });
@@ -63,8 +80,8 @@ sourcesRouter.post("/", upload.single("file"), async (req, res) => {
 	if (!notebook) return res.status(404).json({ error: "Notebook not found" });
 
 	// Multipart request with a PDF file -> type=PDF. A JSON body with `url` -> type=URL.
-	// Otherwise (JSON body with `text`) -> type=TEXT.
-	let type: typeof SourceType.PDF | typeof SourceType.TEXT | typeof SourceType.URL;
+	// A JSON body with `video` -> type=YOUTUBE. Otherwise (JSON body with `text`) -> type=TEXT.
+	let type: typeof SourceType.PDF | typeof SourceType.TEXT | typeof SourceType.URL | typeof SourceType.YOUTUBE;
 	let title: string;
 	let originIdentifier: string;
 
@@ -82,6 +99,20 @@ sourcesRouter.post("/", upload.single("file"), async (req, res) => {
 		// page's real title if the user didn't provide one (see ingestSource.ts).
 		title = parsed.data.title || parsed.data.url;
 		originIdentifier = parsed.data.url;
+	} else if (typeof req.body?.video === "string") {
+		const parsed = youtubeSourceSchema.safeParse(req.body);
+		if (!parsed.success) {
+			return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid video" });
+		}
+		const videoId = extractYoutubeId(parsed.data.video);
+		if (!videoId) {
+			return res.status(400).json({ error: "Couldn't find a valid YouTube video ID in that URL" });
+		}
+		type = SourceType.YOUTUBE;
+		// Placeholder until ingestion runs — the worker overwrites this with the
+		// video's real title if the user didn't provide one (see ingestSource.ts).
+		title = parsed.data.title || videoId;
+		originIdentifier = videoId;
 	} else {
 		const parsed = textSourceSchema.safeParse(req.body);
 		if (!parsed.success) {
