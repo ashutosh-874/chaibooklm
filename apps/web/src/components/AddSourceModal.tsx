@@ -12,6 +12,12 @@ interface AddSourceModalProps {
 	handleAddPdf: (e: React.FormEvent) => Promise<void>;
 	submittingPdf: boolean;
 	fileInputRef: RefObject<HTMLInputElement | null>;
+	urlTitle: string;
+	setUrlTitle: (val: string) => void;
+	url: string;
+	setUrl: (val: string) => void;
+	handleAddUrl: (e: React.FormEvent) => Promise<void>;
+	submittingUrl: boolean;
 }
 
 export function AddSourceModal({
@@ -26,8 +32,14 @@ export function AddSourceModal({
 	handleAddPdf,
 	submittingPdf,
 	fileInputRef,
+	urlTitle,
+	setUrlTitle,
+	url,
+	setUrl,
+	handleAddUrl,
+	submittingUrl,
 }: AddSourceModalProps) {
-	const [activeTab, setActiveTab] = useState<"SELECT" | "PDF" | "TEXT">("SELECT");
+	const [activeTab, setActiveTab] = useState<"SELECT" | "PDF" | "TEXT" | "URL">("SELECT");
 
 	if (!isOpen) return null;
 
@@ -49,6 +61,13 @@ export function AddSourceModal({
 		setActiveTab("SELECT");
 	};
 
+	const onUrlSubmit = async (e: React.FormEvent) => {
+		e.preventDefault();
+		await handleAddUrl(e);
+		onClose();
+		setActiveTab("SELECT");
+	};
+
 	return (
 		<div className="dialog-backdrop" onClick={onClose}>
 			<div className="dialog" style={{ width: "min(560px, 100%)" }} onClick={(e) => e.stopPropagation()}>
@@ -66,6 +85,7 @@ export function AddSourceModal({
 							{activeTab === "SELECT" && "Add a source"}
 							{activeTab === "PDF" && "Upload PDF"}
 							{activeTab === "TEXT" && "Paste text"}
+							{activeTab === "URL" && "Add web page"}
 						</div>
 					</div>
 					<button type="button" className="btn btn-ghost btn-icon" aria-label="Close" onClick={onClose}>
@@ -79,7 +99,7 @@ export function AddSourceModal({
 				{activeTab === "SELECT" && (
 					<>
 						<div className="dialog-body" style={{ margin: 0, fontSize: "14px", opacity: 0.85 }}>
-							Choose a source type. PDF and Text are ready today; URL, YouTube and VTT are coming in a later phase.
+							Choose a source type. PDF, Text and URL are ready today; YouTube and VTT are coming in a later phase.
 						</div>
 						<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginTop: "10px" }}>
 							{/* PDF Tile */}
@@ -132,10 +152,9 @@ export function AddSourceModal({
 								<span style={{ fontSize: "13px", fontWeight: 500, marginTop: "4px" }}>Paste text</span>
 							</button>
 
-							{/* URL Tile (Soon) */}
+							{/* URL Tile */}
 							<button
 								type="button"
-								disabled
 								style={{
 									display: "flex",
 									flexDirection: "column",
@@ -146,20 +165,16 @@ export function AddSourceModal({
 									border: "1px solid var(--color-divider)",
 									background: "var(--color-surface)",
 									color: "var(--color-text)",
-									cursor: "not-allowed",
+									cursor: "pointer",
 									textAlign: "left",
 									width: "100%",
-									opacity: 0.55,
-									position: "relative",
 								}}
+								onClick={() => setActiveTab("URL")}
 							>
 								<span style={{ width: "30px", height: "30px", borderRadius: "7px", background: "var(--color-neutral-800)", color: "var(--color-neutral-200)", display: "flex", alignItems: "center", justifyCenter: "center", justifyContent: "center", fontSize: "9px", fontWeight: 700, letterSpacing: ".02em" }}>
 									URL
 								</span>
-								<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", marginTop: "4px" }}>
-									<span style={{ fontSize: "13px", fontWeight: 500 }}>Web page</span>
-									<span className="tag tag-neutral" style={{ fontSize: "9px", padding: "2px 6px" }}>Soon</span>
-								</div>
+								<span style={{ fontSize: "13px", fontWeight: 500, marginTop: "4px" }}>Web page</span>
 							</button>
 
 							{/* YouTube Tile (Soon) */}
@@ -282,6 +297,42 @@ export function AddSourceModal({
 							</button>
 							<button type="submit" className="btn btn-primary" disabled={submittingText || !text.trim()}>
 								{submittingText ? "Adding…" : "Add text source"}
+							</button>
+						</div>
+					</form>
+				)}
+
+				{activeTab === "URL" && (
+					<form onSubmit={onUrlSubmit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+						<div className="field">
+							<label htmlFor="url-title">Title (optional)</label>
+							<input
+								id="url-title"
+								className="input"
+								type="text"
+								placeholder="e.g. Article title"
+								value={urlTitle}
+								onChange={(e) => setUrlTitle(e.target.value)}
+							/>
+						</div>
+						<div className="field">
+							<label htmlFor="url-value">Page URL</label>
+							<input
+								id="url-value"
+								className="input"
+								type="url"
+								placeholder="https://example.com/article"
+								value={url}
+								onChange={(e) => setUrl(e.target.value)}
+								required
+							/>
+						</div>
+						<div className="dialog-actions" style={{ marginTop: "12px" }}>
+							<button type="button" className="btn btn-secondary" onClick={handleBack}>
+								Back
+							</button>
+							<button type="submit" className="btn btn-primary" disabled={submittingUrl || !url.trim()}>
+								{submittingUrl ? "Adding…" : "Add web page"}
 							</button>
 						</div>
 					</form>

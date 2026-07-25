@@ -9,6 +9,9 @@ export interface Citation {
 	sourceTitle: string;
 	sourceType: SourceType;
 	locator: Locator;
+	// The cited chunk's own text — used directly by the URL viewer, which has
+	// no full document stored to highlight a span within (unlike TEXT/PDF).
+	text: string;
 }
 
 interface StreamCallbacks {

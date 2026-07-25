@@ -57,11 +57,13 @@ export interface Source {
 	updatedAt: string;
 }
 
-// Shape depends on source type: PDF chunks carry `page`, TEXT chunks don't.
+// Shape depends on source type: PDF chunks carry `page`, URL chunks carry
+// `sourceUrl`, TEXT chunks carry neither.
 export interface Locator {
 	page?: number;
 	charStart: number;
 	charEnd: number;
+	sourceUrl?: string;
 }
 
 export const api = {
@@ -97,6 +99,12 @@ export const api = {
 		form.append("file", file);
 		return request<Source>(`/notebooks/${notebookId}/sources`, { method: "POST", body: form }, token);
 	},
+	createUrlSource: (token: string, notebookId: string, url: string, title?: string) =>
+		request<Source>(
+			`/notebooks/${notebookId}/sources`,
+			{ method: "POST", body: JSON.stringify({ url, title }) },
+			token,
+		),
 	deleteSource: (token: string, notebookId: string, sourceId: string) =>
 		request<void>(`/notebooks/${notebookId}/sources/${sourceId}`, { method: "DELETE" }, token),
 	reindexSource: (token: string, notebookId: string, sourceId: string) =>

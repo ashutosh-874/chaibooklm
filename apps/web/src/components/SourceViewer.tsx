@@ -12,7 +12,11 @@ interface SourceViewerProps {
 }
 
 export function SourceViewer({ token, notebookId, citation, source, onClose }: SourceViewerProps) {
-	const locationLabel = citation.locator.page ? `page ${citation.locator.page}` : "text";
+	const locationLabel = citation.locator.page
+		? `page ${citation.locator.page}`
+		: citation.locator.sourceUrl
+			? "web page"
+			: "text";
 
 	return (
 		<div className="dialog-backdrop" onClick={onClose}>
@@ -48,6 +52,19 @@ export function SourceViewer({ token, notebookId, citation, source, onClose }: S
 						charStart={citation.locator.charStart}
 						charEnd={citation.locator.charEnd}
 					/>
+				) : citation.sourceType === "URL" ? (
+					<div className="text-viewer" style={{ overflowY: "auto", maxHeight: "50vh", fontSize: "13.5px", lineHeight: "1.7", paddingRight: "4px" }}>
+						<mark style={{ background: "var(--color-accent-800)", color: "var(--color-accent-100)", padding: "2px 4px", borderRadius: "3px" }}>
+							{citation.text}
+						</mark>
+						{citation.locator.sourceUrl && (
+							<p style={{ marginTop: "12px" }}>
+								<a href={citation.locator.sourceUrl} target="_blank" rel="noreferrer noopener">
+									Open original page ↗
+								</a>
+							</p>
+						)}
+					</div>
 				) : (
 					<p>Viewer for {citation.sourceType} sources isn't built yet.</p>
 				)}

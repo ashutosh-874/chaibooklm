@@ -39,6 +39,14 @@ const textSourceSchema = z.object({
 	text: z.string().trim().min(1),
 });
 
+// Only a format/protocol check for fast feedback — the real SSRF-safety boundary
+// (DNS resolution, private-IP rejection, redirect re-validation) lives in the
+// worker's safeFetch, right before the actual network request happens.
+const urlSourceSchema = z.object({
+	title: z.string().trim().min(1).max(200).optional(),
+	url: z.url().refine((u) => u.startsWith("http://") || u.startsWith("https://"), "URL must be http(s)"),
+});
+
 sourcesRouter.get("/", async (req, res) => {
 	const notebook = await getOwnedNotebook(req.params.notebookId as string, req.userId);
 	if (!notebook) return res.status(404).json({ error: "Notebook not found" });
@@ -54,8 +62,9 @@ sourcesRouter.post("/", upload.single("file"), async (req, res) => {
 	const notebook = await getOwnedNotebook(req.params.notebookId as string, req.userId);
 	if (!notebook) return res.status(404).json({ error: "Notebook not found" });
 
-	// Multipart request with a PDF file -> type=PDF. Otherwise expect a JSON body -> type=TEXT.
-	let type: typeof SourceType.PDF | typeof SourceType.TEXT;
+	// Multipart request with a PDF file -> type=PDF. A JSON body with `url` -> type=URL.
+	// Otherwise (JSON body with `text`) -> type=TEXT.
+	let type: typeof SourceType.PDF | typeof SourceType.TEXT | typeof SourceType.URL;
 	let title: string;
 	let originIdentifier: string;
 
@@ -63,10 +72,20 @@ sourcesRouter.post("/", upload.single("file"), async (req, res) => {
 		type = SourceType.PDF;
 		title = (req.body?.title as string | undefined)?.trim() || req.file.originalname;
 		originIdentifier = req.file.path;
+	} else if (typeof req.body?.url === "string") {
+		const parsed = urlSourceSchema.safeParse(req.body);
+		if (!parsed.success) {
+			return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid URL" });
+		}
+		type = SourceType.URL;
+		// Placeholder until ingestion runs — the worker overwrites this with the
+		// page's real title if the user didn't provide one (see ingestSource.ts).
+		title = parsed.data.title || parsed.data.url;
+		originIdentifier = parsed.data.url;
 	} else {
 		const parsed = textSourceSchema.safeParse(req.body);
 		if (!parsed.success) {
-			return res.status(400).json({ error: "Body must include a non-empty 'text' (or upload a PDF file)" });
+			return res.status(400).json({ error: "Body must include a non-empty 'text' or 'url' (or upload a PDF file)" });
 		}
 		type = SourceType.TEXT;
 		title = parsed.data.title || `${parsed.data.text.slice(0, 50)}${parsed.data.text.length > 50 ? "…" : ""}`;

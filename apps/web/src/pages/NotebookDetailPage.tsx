@@ -24,6 +24,10 @@ export function NotebookDetailPage() {
 	const [submittingPdf, setSubmittingPdf] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
+	const [url, setUrl] = useState("");
+	const [urlTitle, setUrlTitle] = useState("");
+	const [submittingUrl, setSubmittingUrl] = useState(false);
+
 	const [chatQuery, setChatQuery] = useState("");
 	const [chatQuerySubmitted, setChatQuerySubmitted] = useState("");
 	const [answer, setAnswer] = useState("");
@@ -86,6 +90,23 @@ export function NotebookDetailPage() {
 			setError(err instanceof ApiError ? err.message : "Failed to upload PDF");
 		} finally {
 			setSubmittingPdf(false);
+		}
+	}
+
+	async function handleAddUrl(e: React.FormEvent) {
+		e.preventDefault();
+		if (!token || !id || !url.trim()) return;
+		setSubmittingUrl(true);
+		setError(null);
+		try {
+			const source = await api.createUrlSource(token, id, url.trim(), urlTitle.trim() || undefined);
+			setSources((prev) => [source, ...prev]);
+			setUrl("");
+			setUrlTitle("");
+		} catch (err) {
+			setError(err instanceof ApiError ? err.message : "Failed to add web page");
+		} finally {
+			setSubmittingUrl(false);
 		}
 	}
 
@@ -211,7 +232,7 @@ export function NotebookDetailPage() {
 									return (
 										<div key={source.id} style={{ display: "flex", alignItems: "flex-start", gap: "10px", padding: "11px 0", borderBottom: "1px solid var(--color-divider)" }}>
 											<div style={{ width: "30px", height: "30px", flex: "none", borderRadius: "7px", background: "var(--color-neutral-800)", color: "var(--color-neutral-200)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "9px", fontWeight: 700, letterSpacing: ".02em" }}>
-												{source.type === "PDF" ? "PDF" : "TXT"}
+												{source.type === "PDF" ? "PDF" : source.type === "URL" ? "URL" : "TXT"}
 											</div>
 											
 											<div style={{ flex: 1, minWidth: 0 }}>
@@ -327,7 +348,7 @@ export function NotebookDetailPage() {
 																	{c.sourceTitle}
 																</span>
 																<span className="text-muted" style={{ fontSize: "11px" }}>
-																	{c.locator.page ? `p. ${c.locator.page}` : "text"}
+																	{c.locator.page ? `p. ${c.locator.page}` : c.locator.sourceUrl ? "web" : "text"}
 																</span>
 															</button>
 														))}
@@ -381,6 +402,12 @@ export function NotebookDetailPage() {
 				handleAddPdf={handleAddPdf}
 				submittingPdf={submittingPdf}
 				fileInputRef={fileInputRef}
+				urlTitle={urlTitle}
+				setUrlTitle={setUrlTitle}
+				url={url}
+				setUrl={setUrl}
+				handleAddUrl={handleAddUrl}
+				submittingUrl={submittingUrl}
 			/>
 
 			{/* Source Viewer Modal Dialog */}

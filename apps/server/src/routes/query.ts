@@ -59,6 +59,10 @@ queryRouter.post("/", async (req, res) => {
 			sourceTitle: chunk.source.title,
 			sourceType: chunk.source.type,
 			locator: chunk.locator,
+			// The chunk's own text: for TEXT/PDF the viewer highlights this span
+			// inside the full source instead, but URL sources have no stored full
+			// document to highlight within, so their viewer shows this directly.
+			text: chunk.text,
 		}));
 
 		const context = ordered.map((chunk, i) => `[${i + 1}] (source: ${chunk.source.title})\n${chunk.text}`).join("\n\n");
