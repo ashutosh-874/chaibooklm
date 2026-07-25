@@ -29,3 +29,6 @@ export type SSEEvent = (typeof SSE_EVENTS)[keyof typeof SSE_EVENTS];
 
 // BullMQ queue name shared by the server (enqueue) and worker (consume).
 export const INGEST_QUEUE_NAME = "ingest-source";
+
+// Single shared Prisma client instance, used by both server and worker.
+export * from "./db.ts";

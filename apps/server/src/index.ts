@@ -1,0 +1,26 @@
+import { config } from "./config.ts";
+
+import cors from "cors";
+import express from "express";
+import { authRouter } from "./routes/auth.ts";
+import { notebooksRouter } from "./routes/notebooks.ts";
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+app.get("/health", (_req, res) => res.json({ status: "ok" }));
+
+app.use("/auth", authRouter);
+app.use("/notebooks", notebooksRouter);
+
+// biome-ignore lint: express error middleware needs all 4 params to be recognized
+app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+	console.error(err);
+	const message = err instanceof Error ? err.message : "Internal server error";
+	res.status(500).json({ error: message });
+});
+
+app.listen(config.port, () => {
+	console.log(`🚀 Server listening on http://localhost:${config.port}`);
+});

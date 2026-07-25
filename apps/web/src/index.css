@@ -1,0 +1,122 @@
+:root {
+	color-scheme: light dark;
+	font-family: system-ui, sans-serif;
+}
+
+body {
+	margin: 0;
+	background: #fafafa;
+	color: #1a1a1a;
+}
+
+.auth-page {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 100vh;
+}
+
+.auth-form {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	width: 320px;
+	padding: 32px;
+	border: 1px solid #ddd;
+	border-radius: 8px;
+	background: white;
+}
+
+.auth-form label {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	font-size: 14px;
+}
+
+.auth-form input {
+	padding: 8px;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	font-size: 14px;
+}
+
+.auth-form button {
+	padding: 10px;
+	border: none;
+	border-radius: 4px;
+	background: #5b5bd6;
+	color: white;
+	font-size: 14px;
+	cursor: pointer;
+}
+
+.auth-form button:disabled {
+	opacity: 0.6;
+	cursor: default;
+}
+
+.error {
+	color: #c0392b;
+	font-size: 14px;
+}
+
+.notebooks-page {
+	max-width: 640px;
+	margin: 0 auto;
+	padding: 32px 16px;
+}
+
+.notebooks-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 24px;
+}
+
+.notebooks-header div {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	font-size: 14px;
+}
+
+.create-notebook-form {
+	display: flex;
+	gap: 8px;
+	margin-bottom: 24px;
+}
+
+.create-notebook-form input {
+	flex: 1;
+	padding: 8px;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+}
+
+.notebook-list {
+	list-style: none;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.notebook-list li {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 12px 16px;
+	border: 1px solid #eee;
+	border-radius: 6px;
+	background: white;
+}
+
+.notebook-list li div {
+	display: flex;
+	gap: 8px;
+}
+
+button {
+	font-family: inherit;
+}
