@@ -3,6 +3,7 @@ import { prisma, SourceStatus, SourceType } from "@chaibooklm/shared";
 import { extractPdf } from "../extractors/pdf.ts";
 import { extractText } from "../extractors/text.ts";
 import { extractUrl } from "../extractors/url.ts";
+import { extractVtt } from "../extractors/vtt.ts";
 import { extractYoutube } from "../extractors/youtube.ts";
 import { buildChunks, chunkTimedSegments } from "../lib/chunk.ts";
 import { embedTexts } from "../lib/openai.ts";
@@ -23,8 +24,9 @@ export async function ingestSource(sourceId: string) {
 	});
 
 	try {
-		// originIdentifier holds a disk path for PDFs, the raw text itself for
-		// TEXT, the URL itself for URL sources, and the video ID for YouTube sources.
+		// originIdentifier holds a disk path for PDFs and VTT/SRT files, the raw
+		// text itself for TEXT, the URL itself for URL sources, and the video ID
+		// for YouTube sources.
 		let title = source.title;
 		let sourceUrl = source.originIdentifier; // overwritten below with the post-redirect URL, for URL sources
 		let chunks: Array<{ text: string; locator: Record<string, string | number | null> }>;
@@ -38,6 +40,9 @@ export async function ingestSource(sourceId: string) {
 				text: c.text,
 				locator: { ...c.locator, videoId: source.originIdentifier },
 			}));
+		} else if (source.type === SourceType.VTT) {
+			const segments = extractVtt(source.originIdentifier);
+			chunks = chunkTimedSegments(segments).map((c) => ({ text: c.text, locator: c.locator }));
 		} else {
 			let pages: Awaited<ReturnType<typeof extractPdf>>;
 			if (source.type === SourceType.PDF) {

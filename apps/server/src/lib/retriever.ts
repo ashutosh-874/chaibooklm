@@ -64,11 +64,14 @@ export async function queryRewriting(query: string): Promise<QueryVariants> {
 
 	const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}");
 
-	return {
+	const result = {
 		stepBack: parsed.stepBack ?? "",
 		rewritten: parsed.rewritten ?? query,
 		subQueries: Array.isArray(parsed.subQueries) ? parsed.subQueries.slice(0, 3) : [],
 	};
+
+	console.log("[retrieval] queryRewriting:", JSON.stringify(result, null, 2));
+	return result;
 }
 
 // HyDE: ask the model to write a short hypothetical passage that answers the
@@ -90,7 +93,9 @@ export async function hydeDocument(query: string): Promise<string> {
 		],
 	});
 
-	return completion.choices[0]?.message?.content?.trim() ?? "";
+	const result = completion.choices[0]?.message?.content?.trim() ?? "";
+	console.log("[retrieval] hydeDocument:", result);
+	return result;
 }
 
 interface QdrantHit {
@@ -152,11 +157,38 @@ export async function retrieveChunks(collection: string, query: string): Promise
 		...subQueries.map((q, i) => ({ label: `subQuery${i + 1}`, text: q })),
 	].filter((q) => q.text.trim().length > 0);
 
+	console.log(
+		"[retrieval] query variants:",
+		JSON.stringify(
+			labelled.map((q) => q.text),
+			null,
+			2,
+		),
+	);
+
 	const vectors = await embedTexts(labelled.map((q) => q.text));
 	const resultsPerQuery = await Promise.all(vectors.map((v) => searchByVector(collection, v)));
 
 	const rankedLists = labelled.map((q, i) => ({ label: q.label, hits: resultsPerQuery[i] }));
-	const fused = reciprocalRankFusion(rankedLists);
 
-	return fused.slice(0, config.retrieval.finalK);
+	for (const { label, hits } of rankedLists) {
+		console.log(
+			`[retrieval] Qdrant hits for "${label}":`,
+			hits.map((h) => ({
+				score: h.score.toFixed(4),
+				sourceTitle: h.payload?.sourceTitle,
+				sourceType: h.payload?.sourceType,
+				textPreview: typeof h.payload?.text === "string" ? `${h.payload.text.slice(0, 80)}…` : undefined,
+			})),
+		);
+	}
+
+	const fused = reciprocalRankFusion(rankedLists).slice(0, config.retrieval.finalK);
+
+	console.log(
+		"[retrieval] final RRF-fused chunks:",
+		fused.map((f) => ({ chunkId: f.chunkId, rrfScore: f.rrfScore.toFixed(5), bestScore: f.bestScore.toFixed(4), matchedBy: f.matchedBy })),
+	);
+
+	return fused;
 }

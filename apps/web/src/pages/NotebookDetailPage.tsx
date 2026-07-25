@@ -23,6 +23,8 @@ export function NotebookDetailPage() {
 	const [submittingText, setSubmittingText] = useState(false);
 	const [submittingPdf, setSubmittingPdf] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
+	const [submittingVtt, setSubmittingVtt] = useState(false);
+	const vttFileInputRef = useRef<HTMLInputElement>(null);
 
 	const [url, setUrl] = useState("");
 	const [urlTitle, setUrlTitle] = useState("");
@@ -93,6 +95,28 @@ export function NotebookDetailPage() {
 			setError(err instanceof ApiError ? err.message : "Failed to upload PDF");
 		} finally {
 			setSubmittingPdf(false);
+		}
+	}
+
+	async function handleAddVtt(e: React.FormEvent) {
+		e.preventDefault();
+		const file = vttFileInputRef.current?.files?.[0];
+		if (!token || !id || !file) return;
+		setSubmittingVtt(true);
+		setError(null);
+		try {
+			if (file.name.toLowerCase().endsWith(".zip")) {
+				const result = await api.createVttZipSources(token, id, file);
+				setSources((prev) => [...result.sources, ...prev]);
+			} else {
+				const source = await api.createTranscriptSource(token, id, file);
+				setSources((prev) => [source, ...prev]);
+			}
+			if (vttFileInputRef.current) vttFileInputRef.current.value = "";
+		} catch (err) {
+			setError(err instanceof ApiError ? err.message : "Failed to add transcript(s)");
+		} finally {
+			setSubmittingVtt(false);
 		}
 	}
 
@@ -252,7 +276,15 @@ export function NotebookDetailPage() {
 									return (
 										<div key={source.id} style={{ display: "flex", alignItems: "flex-start", gap: "10px", padding: "11px 0", borderBottom: "1px solid var(--color-divider)" }}>
 											<div style={{ width: "30px", height: "30px", flex: "none", borderRadius: "7px", background: "var(--color-neutral-800)", color: "var(--color-neutral-200)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "9px", fontWeight: 700, letterSpacing: ".02em" }}>
-												{source.type === "PDF" ? "PDF" : source.type === "URL" ? "URL" : source.type === "YOUTUBE" ? "YT" : "TXT"}
+												{source.type === "PDF"
+												? "PDF"
+												: source.type === "URL"
+													? "URL"
+													: source.type === "YOUTUBE"
+														? "YT"
+														: source.type === "VTT"
+															? "VTT"
+															: "TXT"}
 											</div>
 											
 											<div style={{ flex: 1, minWidth: 0 }}>
@@ -372,8 +404,8 @@ export function NotebookDetailPage() {
 																	? `p. ${c.locator.page}`
 																	: c.locator.sourceUrl
 																		? "web"
-																		: c.locator.videoId
-																			? `${Math.floor((c.locator.startSec ?? 0) / 60)}:${String(Math.floor((c.locator.startSec ?? 0) % 60)).padStart(2, "0")}`
+																		: c.locator.startSec != null
+																			? `${Math.floor(c.locator.startSec / 60)}:${String(Math.floor(c.locator.startSec % 60)).padStart(2, "0")}`
 																			: "text"}
 																</span>
 															</button>
@@ -440,6 +472,9 @@ export function NotebookDetailPage() {
 				setYoutubeVideo={setYoutubeVideo}
 				handleAddYoutube={handleAddYoutube}
 				submittingYoutube={submittingYoutube}
+				vttFileInputRef={vttFileInputRef}
+				handleAddVtt={handleAddVtt}
+				submittingVtt={submittingVtt}
 			/>
 
 			{/* Source Viewer Modal Dialog */}

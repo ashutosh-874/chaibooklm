@@ -24,6 +24,9 @@ interface AddSourceModalProps {
 	setYoutubeVideo: (val: string) => void;
 	handleAddYoutube: (e: React.FormEvent) => Promise<void>;
 	submittingYoutube: boolean;
+	vttFileInputRef: RefObject<HTMLInputElement | null>;
+	handleAddVtt: (e: React.FormEvent) => Promise<void>;
+	submittingVtt: boolean;
 }
 
 export function AddSourceModal({
@@ -50,8 +53,11 @@ export function AddSourceModal({
 	setYoutubeVideo,
 	handleAddYoutube,
 	submittingYoutube,
+	vttFileInputRef,
+	handleAddVtt,
+	submittingVtt,
 }: AddSourceModalProps) {
-	const [activeTab, setActiveTab] = useState<"SELECT" | "PDF" | "TEXT" | "URL" | "YOUTUBE">("SELECT");
+	const [activeTab, setActiveTab] = useState<"SELECT" | "PDF" | "TEXT" | "URL" | "YOUTUBE" | "VTT">("SELECT");
 
 	if (!isOpen) return null;
 
@@ -87,6 +93,13 @@ export function AddSourceModal({
 		setActiveTab("SELECT");
 	};
 
+	const onVttSubmit = async (e: React.FormEvent) => {
+		e.preventDefault();
+		await handleAddVtt(e);
+		onClose();
+		setActiveTab("SELECT");
+	};
+
 	return (
 		<div className="dialog-backdrop" onClick={onClose}>
 			<div className="dialog" style={{ width: "min(560px, 100%)" }} onClick={(e) => e.stopPropagation()}>
@@ -106,6 +119,7 @@ export function AddSourceModal({
 							{activeTab === "TEXT" && "Paste text"}
 							{activeTab === "URL" && "Add web page"}
 							{activeTab === "YOUTUBE" && "Add YouTube video"}
+							{activeTab === "VTT" && "Add transcript(s)"}
 						</div>
 					</div>
 					<button type="button" className="btn btn-ghost btn-icon" aria-label="Close" onClick={onClose}>
@@ -119,7 +133,7 @@ export function AddSourceModal({
 				{activeTab === "SELECT" && (
 					<>
 						<div className="dialog-body" style={{ margin: 0, fontSize: "14px", opacity: 0.85 }}>
-							Choose a source type. PDF, Text, URL and YouTube are ready today; VTT is coming in a later phase.
+							Choose a source type.
 						</div>
 						<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginTop: "10px" }}>
 							{/* PDF Tile */}
@@ -222,10 +236,9 @@ export function AddSourceModal({
 								<span style={{ fontSize: "13px", fontWeight: 500, marginTop: "4px" }}>YouTube link</span>
 							</button>
 
-							{/* VTT Tile (Soon) */}
+							{/* VTT Tile */}
 							<button
 								type="button"
-								disabled
 								style={{
 									display: "flex",
 									flexDirection: "column",
@@ -236,21 +249,17 @@ export function AddSourceModal({
 									border: "1px solid var(--color-divider)",
 									background: "var(--color-surface)",
 									color: "var(--color-text)",
-									cursor: "not-allowed",
+									cursor: "pointer",
 									textAlign: "left",
 									width: "100%",
-									opacity: 0.55,
-									position: "relative",
 									gridColumn: "span 2",
 								}}
+								onClick={() => setActiveTab("VTT")}
 							>
 								<span style={{ width: "30px", height: "30px", borderRadius: "7px", background: "var(--color-neutral-800)", color: "var(--color-neutral-200)", display: "flex", alignItems: "center", justifyCenter: "center", justifyContent: "center", fontSize: "9px", fontWeight: 700, letterSpacing: ".02em" }}>
 									VTT
 								</span>
-								<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", marginTop: "4px" }}>
-									<span style={{ fontSize: "13px", fontWeight: 500 }}>Transcript (VTT)</span>
-									<span className="tag tag-neutral" style={{ fontSize: "9px", padding: "2px 6px" }}>Soon</span>
-								</div>
+								<span style={{ fontSize: "13px", fontWeight: 500, marginTop: "4px" }}>Transcript (.vtt/.srt, or a .zip of many)</span>
 							</button>
 						</div>
 					</>
@@ -384,6 +393,31 @@ export function AddSourceModal({
 							</button>
 							<button type="submit" className="btn btn-primary" disabled={submittingYoutube || !youtubeVideo.trim()}>
 								{submittingYoutube ? "Adding…" : "Add YouTube video"}
+							</button>
+						</div>
+					</form>
+				)}
+
+				{activeTab === "VTT" && (
+					<form onSubmit={onVttSubmit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+						<div className="field">
+							<label htmlFor="vtt-file">Choose .vtt/.srt file, or a .zip of many</label>
+							<input
+								id="vtt-file"
+								className="input"
+								type="file"
+								accept=".vtt,.srt,.zip"
+								ref={vttFileInputRef}
+								required
+								style={{ padding: "8px" }}
+							/>
+						</div>
+						<div className="dialog-actions" style={{ marginTop: "12px" }}>
+							<button type="button" className="btn btn-secondary" onClick={handleBack}>
+								Back
+							</button>
+							<button type="submit" className="btn btn-primary" disabled={submittingVtt}>
+								{submittingVtt ? "Adding…" : "Add transcript(s)"}
 							</button>
 						</div>
 					</form>

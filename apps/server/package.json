@@ -10,6 +10,7 @@
   "dependencies": {
     "@chaibooklm/shared": "workspace:*",
     "@qdrant/js-client-rest": "^1.18.0",
+    "adm-zip": "^0.6.0",
     "bcryptjs": "^3.0.3",
     "bullmq": "^5.81.2",
     "cors": "^2.8.6",
@@ -22,6 +23,7 @@
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/adm-zip": "^0.5.7",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.2.0",
     "@types/node": "^26.1.1"

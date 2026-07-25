@@ -114,6 +114,20 @@ export const api = {
 			{ method: "POST", body: JSON.stringify({ video, title }) },
 			token,
 		),
+	createTranscriptSource: (token: string, notebookId: string, file: File) => {
+		const form = new FormData();
+		form.append("file", file);
+		return request<Source>(`/notebooks/${notebookId}/sources`, { method: "POST", body: form }, token);
+	},
+	createVttZipSources: (token: string, notebookId: string, file: File) => {
+		const form = new FormData();
+		form.append("file", file);
+		return request<{ count: number; sources: Source[] }>(
+			`/notebooks/${notebookId}/sources/vtt-zip`,
+			{ method: "POST", body: form },
+			token,
+		);
+	},
 	deleteSource: (token: string, notebookId: string, sourceId: string) =>
 		request<void>(`/notebooks/${notebookId}/sources/${sourceId}`, { method: "DELETE" }, token),
 	reindexSource: (token: string, notebookId: string, sourceId: string) =>

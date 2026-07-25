@@ -62,13 +62,13 @@ notebooksRouter.delete("/:id", async (req, res) => {
 	const notebook = await getOwnedNotebook(req.params.id, req.userId);
 	if (!notebook) return res.status(404).json({ error: "Notebook not found" });
 
-	// Postgres cascade deletes Source/Chunk rows, but uploaded PDF files on disk
-	// need an explicit cleanup pass first (best-effort; a missing file is fine).
-	const pdfSources = await prisma.source.findMany({
-		where: { notebookId: notebook.id, type: SourceType.PDF },
+	// Postgres cascade deletes Source/Chunk rows, but uploaded PDF/VTT files on
+	// disk need an explicit cleanup pass first (best-effort; a missing file is fine).
+	const fileSources = await prisma.source.findMany({
+		where: { notebookId: notebook.id, type: { in: [SourceType.PDF, SourceType.VTT] } },
 		select: { originIdentifier: true },
 	});
-	await Promise.all(pdfSources.map((s) => fs.promises.unlink(s.originIdentifier).catch(() => {})));
+	await Promise.all(fileSources.map((s) => fs.promises.unlink(s.originIdentifier).catch(() => {})));
 
 	await deleteCollection(notebook.qdrantCollection);
 	await prisma.notebook.delete({ where: { id: notebook.id } });

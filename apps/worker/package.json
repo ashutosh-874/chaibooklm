@@ -15,6 +15,7 @@
     "jsdom": "^29.1.1",
     "openai": "^6.49.0",
     "pdf-parse": "^2.4.5",
+    "subtitle": "^4.2.2",
     "youtube-caption-extractor": "^1.10.2"
   },
   "devDependencies": {

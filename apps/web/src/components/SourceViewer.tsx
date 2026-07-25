@@ -16,8 +16,8 @@ export function SourceViewer({ token, notebookId, citation, source, onClose }: S
 		? `page ${citation.locator.page}`
 		: citation.locator.sourceUrl
 			? "web page"
-			: citation.locator.videoId
-				? `${Math.floor((citation.locator.startSec ?? 0) / 60)}:${String(Math.floor((citation.locator.startSec ?? 0) % 60)).padStart(2, "0")}`
+			: citation.locator.startSec != null
+				? `${Math.floor(citation.locator.startSec / 60)}:${String(Math.floor(citation.locator.startSec % 60)).padStart(2, "0")}`
 				: "text";
 
 	return (
@@ -81,6 +81,12 @@ export function SourceViewer({ token, notebookId, citation, source, onClose }: S
 						<p className="text-muted" style={{ fontSize: "13px", marginTop: "12px", lineHeight: "1.6" }}>
 							{citation.text}
 						</p>
+					</div>
+				) : citation.sourceType === "VTT" ? (
+					<div className="text-viewer" style={{ overflowY: "auto", maxHeight: "50vh", fontSize: "13.5px", lineHeight: "1.7", paddingRight: "4px" }}>
+						<mark style={{ background: "var(--color-accent-800)", color: "var(--color-accent-100)", padding: "2px 4px", borderRadius: "3px" }}>
+							{citation.text}
+						</mark>
 					</div>
 				) : (
 					<p>Viewer for {citation.sourceType} sources isn't built yet.</p>

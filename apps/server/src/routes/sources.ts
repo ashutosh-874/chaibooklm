@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { prisma, SourceStatus, SourceType } from "@chaibooklm/shared";
+import AdmZip from "adm-zip";
 import { Router } from "express";
 import multer from "multer";
 import { z } from "zod";
@@ -20,8 +21,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const uploadDir = path.join(__dirname, "..", "..", "uploads");
 fs.mkdirSync(uploadDir, { recursive: true });
 
-// PDFs are kept on disk (not just at upload time) because reindex re-reads
-// the same file rather than requiring a fresh upload.
+// PDFs/VTT/SRT are kept on disk (not just at upload time) because reindex
+// re-reads the same file rather than requiring a fresh upload.
 const upload = multer({
 	storage: multer.diskStorage({
 		destination: (_req, _file, cb) => cb(null, uploadDir),
@@ -29,8 +30,26 @@ const upload = multer({
 	}),
 	limits: { fileSize: 25 * 1024 * 1024 }, // 25 MB
 	fileFilter: (_req, file, cb) => {
-		if (file.mimetype === "application/pdf") return cb(null, true);
-		cb(new Error("Only PDF files are allowed"));
+		// PDF is checked by mimetype (reliable for PDFs); VTT/SRT mimetypes are
+		// inconsistent across browsers/OSes (often application/octet-stream), so
+		// those are checked by extension instead.
+		const ext = path.extname(file.originalname).toLowerCase();
+		if (file.mimetype === "application/pdf" || ext === ".vtt" || ext === ".srt") return cb(null, true);
+		cb(new Error("Only PDF, VTT, or SRT files are allowed"));
+	},
+});
+
+const MAX_ZIP_LECTURES = 300;
+
+// Zip is buffered in memory (not disk) because it's unpacked and filtered
+// in-process via adm-zip before anything is written — only the kept
+// .vtt/.srt entries end up on disk, in uploadDir, same as any other source file.
+const uploadZip = multer({
+	storage: multer.memoryStorage(),
+	limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB — transcripts are plain text, generous
+	fileFilter: (_req, file, cb) => {
+		if (path.extname(file.originalname).toLowerCase() === ".zip") return cb(null, true);
+		cb(new Error("Only .zip files are allowed"));
 	},
 });
 
@@ -79,15 +98,19 @@ sourcesRouter.post("/", upload.single("file"), async (req, res) => {
 	const notebook = await getOwnedNotebook(req.params.notebookId as string, req.userId);
 	if (!notebook) return res.status(404).json({ error: "Notebook not found" });
 
-	// Multipart request with a PDF file -> type=PDF. A JSON body with `url` -> type=URL.
-	// A JSON body with `video` -> type=YOUTUBE. Otherwise (JSON body with `text`) -> type=TEXT.
-	let type: typeof SourceType.PDF | typeof SourceType.TEXT | typeof SourceType.URL | typeof SourceType.YOUTUBE;
+	// Multipart request with a PDF/VTT/SRT file -> type=PDF or VTT (by extension).
+	// A JSON body with `url` -> type=URL. A JSON body with `video` -> type=YOUTUBE.
+	// Otherwise (JSON body with `text`) -> type=TEXT.
+	let type: typeof SourceType.PDF | typeof SourceType.TEXT | typeof SourceType.URL | typeof SourceType.YOUTUBE | typeof SourceType.VTT;
 	let title: string;
 	let originIdentifier: string;
 
 	if (req.file) {
-		type = SourceType.PDF;
-		title = (req.body?.title as string | undefined)?.trim() || req.file.originalname;
+		const ext = path.extname(req.file.originalname).toLowerCase();
+		const isTranscript = ext === ".vtt" || ext === ".srt";
+		type = isTranscript ? SourceType.VTT : SourceType.PDF;
+		const defaultTitle = isTranscript ? path.basename(req.file.originalname, ext) : req.file.originalname;
+		title = (req.body?.title as string | undefined)?.trim() || defaultTitle;
 		originIdentifier = req.file.path;
 	} else if (typeof req.body?.url === "string") {
 		const parsed = urlSourceSchema.safeParse(req.body);
@@ -131,6 +154,82 @@ sourcesRouter.post("/", upload.single("file"), async (req, res) => {
 	res.status(202).json(source);
 });
 
+// Batch endpoint for a zip of many transcripts (e.g. a course export) — kept
+// separate from POST / so that endpoint's one-file-in-one-Source-out response
+// shape stays uniform instead of becoming polymorphic.
+sourcesRouter.post("/vtt-zip", uploadZip.single("file"), async (req, res) => {
+	const notebook = await getOwnedNotebook(req.params.notebookId as string, req.userId);
+	if (!notebook) return res.status(404).json({ error: "Notebook not found" });
+	if (!req.file) return res.status(400).json({ error: "A .zip file is required" });
+
+	let zip: AdmZip;
+	try {
+		zip = new AdmZip(req.file.buffer);
+	} catch {
+		return res.status(400).json({ error: "Couldn't read this zip file — it may be corrupted" });
+	}
+
+	// Group candidate entries by (dir, basename-without-ext) so a lecture that
+	// shipped as both .vtt and .srt only becomes one Source (prefer .vtt).
+	const candidates = new Map<string, { entryName: string; ext: string; dir: string; base: string }>();
+	for (const entry of zip.getEntries()) {
+		if (entry.isDirectory) continue;
+		// adm-zip normalizes entryName and rejects zip-slip paths when reading,
+		// but double-check anyway — defense in depth, same spirit as safeFetch's SSRF checks.
+		const normalized = path.normalize(entry.entryName);
+		if (normalized.startsWith("..") || path.isAbsolute(normalized)) continue;
+		if (normalized.startsWith("__MACOSX/")) continue;
+
+		const base0 = path.basename(normalized);
+		if (base0.startsWith(".")) continue; // .DS_Store and other dotfiles
+
+		const ext = path.extname(normalized).toLowerCase();
+		if (ext !== ".vtt" && ext !== ".srt") continue;
+
+		const dir = path.dirname(normalized);
+		const base = path.basename(normalized, ext);
+		const key = `${dir}/${base}`;
+
+		const existing = candidates.get(key);
+		if (!existing || (existing.ext === ".srt" && ext === ".vtt")) {
+			candidates.set(key, { entryName: normalized, ext, dir, base });
+		}
+	}
+
+	if (candidates.size === 0) {
+		return res.status(400).json({ error: "No .vtt or .srt files found in this zip archive" });
+	}
+	if (candidates.size > MAX_ZIP_LECTURES) {
+		return res.status(400).json({ error: `This zip has ${candidates.size} transcript files — the limit is ${MAX_ZIP_LECTURES}` });
+	}
+
+	const sources = [];
+	for (const { entryName, ext, dir, base } of candidates.values()) {
+		const entryData = zip.readFile(entryName);
+		if (!entryData) continue; // shouldn't happen, but don't let one bad entry 500 the whole batch
+
+		const diskName = `${Date.now()}-${crypto.randomUUID()}${ext}`;
+		const diskPath = path.join(uploadDir, diskName);
+		await fs.promises.writeFile(diskPath, entryData);
+
+		// The sample export nests each lecture in its own same-named subfolder
+		// (module/lecture/lecture.vtt) — when that's the case, the *module*
+		// folder one level further up is the only extra context worth surfacing;
+		// without it, 80+ lectures all look alike in the source list.
+		const immediateParent = path.basename(dir);
+		const moduleFolder = immediateParent === base ? path.basename(path.dirname(dir)) : immediateParent;
+		const title = moduleFolder && moduleFolder !== "." ? `${moduleFolder} — ${base}` : base;
+
+		const source = await prisma.source.create({
+			data: { notebookId: notebook.id, type: SourceType.VTT, title, originIdentifier: diskPath, status: SourceStatus.UPLOADING },
+		});
+		await enqueueIngestJob(source.id);
+		sources.push(source);
+	}
+
+	res.status(201).json({ count: sources.length, sources });
+});
+
 // Serves the raw PDF bytes so the web Source Viewer can render it (react-pdf
 // needs the actual file, not just metadata). TEXT sources need no equivalent —
 // their content is the `originIdentifier` string already returned by GET /.
@@ -160,7 +259,7 @@ sourcesRouter.delete("/:sourceId", async (req, res) => {
 
 	await deleteSourcePoints(notebook.qdrantCollection, source.id);
 	await prisma.source.delete({ where: { id: source.id } }); // cascades to Chunk rows
-	if (source.type === SourceType.PDF) {
+	if (source.type === SourceType.PDF || source.type === SourceType.VTT) {
 		await fs.promises.unlink(source.originIdentifier).catch(() => {}); // best-effort; file may already be gone
 	}
 	res.status(204).send();
