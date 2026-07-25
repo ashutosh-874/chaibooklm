@@ -6,9 +6,6 @@ interface TextViewerProps {
 	charEnd: number;
 }
 
-// TEXT sources are stored/chunked against whitespace-normalized text (see
-// apps/worker/src/lib/chunk.ts), so charStart/charEnd are offsets into that
-// normalized form, not necessarily the original raw string's exact spacing.
 function normalize(text: string) {
 	return text.replace(/\s+/g, " ").trim();
 }
@@ -26,10 +23,12 @@ export function TextViewer({ text, charStart, charEnd }: TextViewerProps) {
 	const after = normalized.slice(charEnd);
 
 	return (
-		<div className="text-viewer">
-			{before}
-			<mark ref={markRef}>{highlighted}</mark>
-			{after}
+		<div className="text-viewer" style={{ overflowY: "auto", maxHeight: "50vh", fontSize: "13.5px", lineHeight: "1.7", paddingRight: "4px" }}>
+			<span style={{ opacity: 0.7 }}>{before}</span>
+			<mark ref={markRef} style={{ background: "var(--color-accent-800)", color: "var(--color-accent-100)", padding: "2px 4px", borderRadius: "3px" }}>
+				{highlighted}
+			</mark>
+			<span style={{ opacity: 0.7 }}>{after}</span>
 		</div>
 	);
 }

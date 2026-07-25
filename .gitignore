@@ -7,3 +7,4 @@ build/
 uploads/
 .DS_Store
 *.pdf
+docs/

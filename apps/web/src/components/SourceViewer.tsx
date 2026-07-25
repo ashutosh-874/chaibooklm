@@ -11,23 +11,37 @@ interface SourceViewerProps {
 	onClose: () => void;
 }
 
-// Picks the right viewer for the cited source's type and closes the shared
-// modal shell — PDF/TEXT only for now, URL/YOUTUBE/VTT arrive in Phase 5-6.
 export function SourceViewer({ token, notebookId, citation, source, onClose }: SourceViewerProps) {
+	const locationLabel = citation.locator.page ? `page ${citation.locator.page}` : "text";
+
 	return (
-		<div className="modal-backdrop" onClick={onClose}>
-			<div className="modal-panel" onClick={(e) => e.stopPropagation()}>
-				<div className="modal-header">
-					<h2>{citation.sourceTitle}</h2>
-					<button type="button" onClick={onClose}>
-						Close
+		<div className="dialog-backdrop" onClick={onClose}>
+			<div className="dialog" style={{ width: "min(560px, 100%)", maxHeight: "86vh" }} onClick={(e) => e.stopPropagation()}>
+				{/* Dialog Header */}
+				<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+					<div className="dialog-title" style={{ fontSize: "16px" }}>
+						{citation.sourceTitle}{" "}
+						<span className="text-muted" style={{ fontSize: "13px", fontWeight: 400 }}>
+							— {locationLabel}
+						</span>
+					</div>
+					<button type="button" className="btn btn-ghost btn-icon" aria-label="Close" onClick={onClose}>
+						<svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor">
+							<path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/>
+						</svg>
 					</button>
 				</div>
 
+				{/* Dialog Body */}
 				{!source ? (
 					<p className="error">Source no longer exists.</p>
 				) : citation.sourceType === "PDF" ? (
-					<PdfViewer token={token} notebookId={notebookId} sourceId={source.id} page={citation.locator.page ?? 1} />
+					<>
+						<PdfViewer token={token} notebookId={notebookId} sourceId={source.id} page={citation.locator.page ?? 1} />
+						<p className="text-muted" style={{ fontSize: "11px", margin: 0, marginTop: "8px" }}>
+							Highlighted lines mark the passage this citation points to. The page render streams the actual PDF page via react-pdf.
+						</p>
+					</>
 				) : citation.sourceType === "TEXT" ? (
 					<TextViewer
 						text={source.originIdentifier}

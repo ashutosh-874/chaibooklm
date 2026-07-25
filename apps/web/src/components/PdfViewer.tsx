@@ -4,8 +4,6 @@ import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 import { api } from "../lib/api.ts";
 
-// react-pdf renders via pdf.js, which needs its worker script pointed at the
-// exact version it bundles — resolved as a Vite asset URL, not fetched from a CDN.
 pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
 
 interface PdfViewerProps {
@@ -35,19 +33,19 @@ export function PdfViewer({ token, notebookId, sourceId, page }: PdfViewerProps)
 		};
 	}, [token, notebookId, sourceId]);
 
-	// react-pdf treats a new `file` object identity as "the file changed" and
-	// reloads — memoize so it only loads once per fetched buffer, not every render.
 	const file = useMemo(() => (fileData ? { data: fileData } : null), [fileData]);
 
 	if (error) return <p className="error">{error}</p>;
-	if (!file) return <p>Loading PDF…</p>;
+	if (!file) return <p className="text-muted" style={{ textAlign: "center", padding: "20px" }}>Loading PDF…</p>;
 
 	return (
-		<div className="pdf-viewer">
-			<Document file={file} onLoadSuccess={({ numPages }) => setNumPages(numPages)}>
-				<Page pageNumber={page} />
-			</Document>
-			<p className="pdf-page-label">
+		<div className="pdf-viewer" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px", overflow: "auto", maxHeight: "50vh", background: "var(--color-neutral-900)", borderRadius: "8px", padding: "16px" }}>
+			<div style={{ boxShadow: "var(--shadow-sm)", background: "white", padding: "8px", borderRadius: "4px" }}>
+				<Document file={file} onLoadSuccess={({ numPages }) => setNumPages(numPages)}>
+					<Page pageNumber={page} width={400} renderTextLayer={false} renderAnnotationLayer={false} />
+				</Document>
+			</div>
+			<p className="text-muted" style={{ fontSize: "11px", margin: 0, marginTop: "4px" }}>
 				Page {page}
 				{numPages ? ` of ${numPages}` : ""}
 			</p>
