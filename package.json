@@ -1,0 +1,24 @@
+{
+  "name": "chaibooklm",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:server": "bun run --cwd apps/server dev",
+    "dev:worker": "bun run --cwd apps/worker dev",
+    "dev:web": "bun run --cwd apps/web dev",
+    "prisma:generate": "bunx prisma generate",
+    "prisma:migrate": "bunx prisma migrate dev"
+  },
+  "devDependencies": {
+    "prisma": "^7.9.0",
+    "dotenv": "^17.4.2"
+  },
+  "dependencies": {
+    "@prisma/client": "^7.9.0",
+    "@prisma/adapter-pg": "^7.9.0",
+    "pg": "^8.22.0"
+  }
+}

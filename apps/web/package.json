@@ -1,0 +1,9 @@
+{
+  "name": "@chaibooklm/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "echo \"web not implemented yet (Phase 1)\" && exit 1"
+  }
+}

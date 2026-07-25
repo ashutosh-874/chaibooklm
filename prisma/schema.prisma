@@ -1,0 +1,68 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../packages/shared/src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String
+  createdAt    DateTime   @default(now())
+  notebooks    Notebook[]
+}
+
+model Notebook {
+  id               String   @id @default(cuid())
+  name             String
+  userId           String
+  user             User     @relation(fields: [userId], references: [id])
+  qdrantCollection String   @unique // e.g. `nb_${id}`; created on notebook create, dropped manually (not cascaded) on delete
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  sources          Source[]
+}
+
+enum SourceType {
+  PDF
+  TEXT
+  URL
+  YOUTUBE
+  VTT
+}
+
+enum SourceStatus {
+  UPLOADING
+  INDEXING
+  READY
+  FAILED
+}
+
+model Source {
+  id               String       @id @default(cuid())
+  notebookId       String
+  notebook         Notebook     @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+  type             SourceType
+  title            String
+  status           SourceStatus @default(UPLOADING)
+  errorMessage     String?
+  originIdentifier String // file path (PDF/VTT), raw text, URL, or YouTube video ID depending on `type`
+  metadata         Json? // shape depends on `type`, e.g. { pageCount } or { videoId, durationSec }
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  chunks           Chunk[]
+}
+
+model Chunk {
+  id            String   @id @default(cuid())
+  sourceId      String
+  source        Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  qdrantPointId String   @unique
+  chunkIndex    Int
+  text          String
+  locator       Json // shape depends on source type (page/offset/timestamp/cue); kept here, not just in Qdrant payload, so citation UI never round-trips to Qdrant
+  createdAt     DateTime @default(now())
+}

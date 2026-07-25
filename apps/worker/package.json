@@ -1,0 +1,9 @@
+{
+  "name": "@chaibooklm/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "echo \"worker not implemented yet (Phase 2)\" && exit 1"
+  }
+}
