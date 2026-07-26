@@ -3,6 +3,8 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.tsx";
 import { SourceViewer } from "../components/SourceViewer.tsx";
 import { AddSourceModal } from "../components/AddSourceModal.tsx";
+import { RoadmapPanel } from "../components/RoadmapPanel.tsx";
+import { Tabs } from "../components/Tabs.tsx";
 import { api, ApiError, type Notebook, type Source } from "../lib/api.ts";
 import { type Citation, streamQuery } from "../lib/queryStream.ts";
 
@@ -42,6 +44,10 @@ export function NotebookDetailPage() {
 	const [viewingCitation, setViewingCitation] = useState<Citation | null>(null);
 	
 	const [isAddSourceOpen, setIsAddSourceOpen] = useState(false);
+	const [rightTab, setRightTab] = useState<"CHAT" | "ROADMAP">("CHAT");
+
+	const [playlistUrl, setPlaylistUrl] = useState("");
+	const [submittingPlaylist, setSubmittingPlaylist] = useState(false);
 
 	const refreshSources = useCallback(async () => {
 		if (!token || !id) return;
@@ -151,6 +157,22 @@ export function NotebookDetailPage() {
 			setError(err instanceof ApiError ? err.message : "Failed to add YouTube video");
 		} finally {
 			setSubmittingYoutube(false);
+		}
+	}
+
+	async function handleAddPlaylist(e: React.FormEvent) {
+		e.preventDefault();
+		if (!token || !id || !playlistUrl.trim()) return;
+		setSubmittingPlaylist(true);
+		setError(null);
+		try {
+			const result = await api.createYoutubePlaylistSources(token, id, playlistUrl.trim());
+			setSources((prev) => [...result.sources, ...prev]);
+			setPlaylistUrl("");
+		} catch (err) {
+			setError(err instanceof ApiError ? err.message : "Failed to add playlist");
+		} finally {
+			setSubmittingPlaylist(false);
 		}
 	}
 
@@ -324,8 +346,23 @@ export function NotebookDetailPage() {
 					</div>
 				</div>
 
-				{/* Right Pane: Chat */}
+				{/* Right Pane: Chat / Roadmap */}
 				<div style={{ flex: "2 1 480px", minWidth: "340px", display: "flex", flexDirection: "column", height: "100%" }}>
+					<Tabs
+						tabs={[
+							{ value: "CHAT", label: "Chat" },
+							{ value: "ROADMAP", label: "Roadmap" },
+						]}
+						active={rightTab}
+						onChange={setRightTab}
+					/>
+
+					{rightTab === "ROADMAP" && token && id && (
+						<RoadmapPanel token={token} notebookId={id} onViewCitation={setViewingCitation} />
+					)}
+
+					{rightTab === "CHAT" && (
+					<>
 					{/* Messages List Area */}
 					<div style={{ flex: 1, overflowY: "auto", padding: "22px 26px", display: "flex", flexDirection: "column", gap: "18px" }}>
 						{chatError && <p className="error">{chatError}</p>}
@@ -444,6 +481,8 @@ export function NotebookDetailPage() {
 							</button>
 						</div>
 					</form>
+					</>
+					)}
 				</div>
 			</div>
 
@@ -475,6 +514,10 @@ export function NotebookDetailPage() {
 				vttFileInputRef={vttFileInputRef}
 				handleAddVtt={handleAddVtt}
 				submittingVtt={submittingVtt}
+				playlistUrl={playlistUrl}
+				setPlaylistUrl={setPlaylistUrl}
+				handleAddPlaylist={handleAddPlaylist}
+				submittingPlaylist={submittingPlaylist}
 			/>
 
 			{/* Source Viewer Modal Dialog */}

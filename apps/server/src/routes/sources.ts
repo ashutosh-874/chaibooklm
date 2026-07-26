@@ -10,6 +10,7 @@ import { z } from "zod";
 import { getOwnedNotebook } from "../lib/ownership.ts";
 import { enqueueIngestJob } from "../lib/queue.ts";
 import { deleteSourcePoints } from "../lib/qdrant.ts";
+import { resolvePlaylistVideoIds } from "../lib/youtubePlaylist.ts";
 import { requireAuth } from "../middleware/requireAuth.ts";
 
 // mergeParams: this router is mounted at /notebooks/:notebookId/sources and
@@ -69,6 +70,10 @@ const urlSourceSchema = z.object({
 const youtubeSourceSchema = z.object({
 	title: z.string().trim().min(1).max(200).optional(),
 	video: z.string().trim().min(1),
+});
+
+const youtubePlaylistSchema = z.object({
+	playlistUrl: z.string().trim().min(1),
 });
 
 // Pulls the 11-char video ID out of common YouTube URL forms, or accepts a bare ID.
@@ -222,6 +227,37 @@ sourcesRouter.post("/vtt-zip", uploadZip.single("file"), async (req, res) => {
 
 		const source = await prisma.source.create({
 			data: { notebookId: notebook.id, type: SourceType.VTT, title, originIdentifier: diskPath, status: SourceStatus.UPLOADING },
+		});
+		await enqueueIngestJob(source.id);
+		sources.push(source);
+	}
+
+	res.status(201).json({ count: sources.length, sources });
+});
+
+// Batch endpoint for a YouTube playlist — resolves the playlist to its member
+// videos via the YouTube Data API, then creates one Source per video (same
+// shape as a single YOUTUBE source from POST /), each ingested independently.
+sourcesRouter.post("/youtube-playlist", async (req, res) => {
+	const notebook = await getOwnedNotebook(req.params.notebookId as string, req.userId);
+	if (!notebook) return res.status(404).json({ error: "Notebook not found" });
+
+	const parsed = youtubePlaylistSchema.safeParse(req.body);
+	if (!parsed.success) {
+		return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid playlistUrl" });
+	}
+
+	let videos: Awaited<ReturnType<typeof resolvePlaylistVideoIds>>;
+	try {
+		videos = await resolvePlaylistVideoIds(parsed.data.playlistUrl);
+	} catch (err) {
+		return res.status(400).json({ error: err instanceof Error ? err.message : "Couldn't resolve this playlist" });
+	}
+
+	const sources = [];
+	for (const { videoId, title } of videos) {
+		const source = await prisma.source.create({
+			data: { notebookId: notebook.id, type: SourceType.YOUTUBE, title, originIdentifier: videoId, status: SourceStatus.UPLOADING },
 		});
 		await enqueueIngestJob(source.id);
 		sources.push(source);

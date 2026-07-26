@@ -22,6 +22,9 @@ export const config = {
 		embeddingDimensions: Number(process.env.EMBEDDING_DIMENSIONS) || 1536,
 		chatModel: process.env.CHAT_MODEL || "gpt-4o-mini",
 	},
+	youtube: {
+		dataApiKey: process.env.YOUTUBE_DATA_API_KEY,
+	},
 	chunking: {
 		chunkSize: Number(process.env.CHUNK_SIZE) || 1000,
 		chunkOverlap: Number(process.env.CHUNK_OVERLAP) || 200,

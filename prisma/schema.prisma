@@ -24,6 +24,7 @@ model Notebook {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   sources          Source[]
+  roadmaps         Roadmap[]
 }
 
 enum SourceType {
@@ -65,4 +66,23 @@ model Chunk {
   text          String
   locator       Json // shape depends on source type (page/offset/timestamp/cue); kept here, not just in Qdrant payload, so citation UI never round-trips to Qdrant
   createdAt     DateTime @default(now())
+}
+
+enum RoadmapStatus {
+  PENDING
+  GENERATING
+  READY
+  FAILED
+}
+
+model Roadmap {
+  id           String        @id @default(cuid())
+  notebookId   String // a notebook can have many roadmaps, one per generated topic — kept and listed, not overwritten
+  notebook     Notebook      @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+  status       RoadmapStatus @default(PENDING)
+  topic        String? // the concept/topic the user picked to scope generation to
+  errorMessage String?
+  concepts     Json? // [{ title, summary, orderRank, citations: [{ sourceId, chunkId, timestampSec }] }]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 }

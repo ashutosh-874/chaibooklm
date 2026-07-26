@@ -69,6 +69,38 @@ export interface Locator {
 	videoId?: string;
 }
 
+export type RoadmapStatus = "PENDING" | "GENERATING" | "READY" | "FAILED" | null;
+
+// Same shape as queryStream.ts's Citation (minus `n`, which is chat-answer
+// specific) — the roadmap job denormalizes this at generation time so the
+// existing SourceViewer can open a roadmap citation with no extra fetch.
+export interface RoadmapConceptCitation {
+	chunkId: string;
+	sourceId: string;
+	sourceTitle: string;
+	sourceType: SourceType;
+	locator: Locator;
+	text: string;
+}
+
+export interface RoadmapConcept {
+	title: string;
+	summary: string;
+	orderRank: number;
+	citations: RoadmapConceptCitation[];
+}
+
+export interface Roadmap {
+	id: string;
+	notebookId: string;
+	status: RoadmapStatus;
+	topic: string | null;
+	errorMessage?: string | null;
+	concepts: RoadmapConcept[] | null;
+	createdAt: string;
+	updatedAt: string;
+}
+
 export const api = {
 	signup: (email: string, password: string) =>
 		request<{ token: string; user: User }>("/auth/signup", {
@@ -119,6 +151,12 @@ export const api = {
 		form.append("file", file);
 		return request<Source>(`/notebooks/${notebookId}/sources`, { method: "POST", body: form }, token);
 	},
+	createYoutubePlaylistSources: (token: string, notebookId: string, playlistUrl: string) =>
+		request<{ count: number; sources: Source[] }>(
+			`/notebooks/${notebookId}/sources/youtube-playlist`,
+			{ method: "POST", body: JSON.stringify({ playlistUrl }) },
+			token,
+		),
 	createVttZipSources: (token: string, notebookId: string, file: File) => {
 		const form = new FormData();
 		form.append("file", file);
@@ -141,4 +179,14 @@ export const api = {
 		if (!res.ok) throw new ApiError(res.status, `Failed to load PDF (${res.status})`);
 		return res.arrayBuffer();
 	},
+
+	listRoadmaps: (token: string, notebookId: string) => request<Roadmap[]>(`/notebooks/${notebookId}/roadmap`, {}, token),
+	getRoadmap: (token: string, notebookId: string, roadmapId: string) =>
+		request<Roadmap>(`/notebooks/${notebookId}/roadmap/${roadmapId}`, {}, token),
+	getRoadmapTopics: (token: string, notebookId: string) =>
+		request<{ topics: string[] }>(`/notebooks/${notebookId}/roadmap/topics`, {}, token),
+	generateRoadmap: (token: string, notebookId: string, topic: string) =>
+		request<Roadmap>(`/notebooks/${notebookId}/roadmap`, { method: "POST", body: JSON.stringify({ topic }) }, token),
+	deleteRoadmap: (token: string, notebookId: string, roadmapId: string) =>
+		request<void>(`/notebooks/${notebookId}/roadmap/${roadmapId}`, { method: "DELETE" }, token),
 };

@@ -27,6 +27,10 @@ interface AddSourceModalProps {
 	vttFileInputRef: RefObject<HTMLInputElement | null>;
 	handleAddVtt: (e: React.FormEvent) => Promise<void>;
 	submittingVtt: boolean;
+	playlistUrl: string;
+	setPlaylistUrl: (val: string) => void;
+	handleAddPlaylist: (e: React.FormEvent) => Promise<void>;
+	submittingPlaylist: boolean;
 }
 
 export function AddSourceModal({
@@ -56,8 +60,12 @@ export function AddSourceModal({
 	vttFileInputRef,
 	handleAddVtt,
 	submittingVtt,
+	playlistUrl,
+	setPlaylistUrl,
+	handleAddPlaylist,
+	submittingPlaylist,
 }: AddSourceModalProps) {
-	const [activeTab, setActiveTab] = useState<"SELECT" | "PDF" | "TEXT" | "URL" | "YOUTUBE" | "VTT">("SELECT");
+	const [activeTab, setActiveTab] = useState<"SELECT" | "PDF" | "TEXT" | "URL" | "YOUTUBE" | "VTT" | "PLAYLIST">("SELECT");
 
 	if (!isOpen) return null;
 
@@ -100,6 +108,13 @@ export function AddSourceModal({
 		setActiveTab("SELECT");
 	};
 
+	const onPlaylistSubmit = async (e: React.FormEvent) => {
+		e.preventDefault();
+		await handleAddPlaylist(e);
+		onClose();
+		setActiveTab("SELECT");
+	};
+
 	return (
 		<div className="dialog-backdrop" onClick={onClose}>
 			<div className="dialog" style={{ width: "min(560px, 100%)" }} onClick={(e) => e.stopPropagation()}>
@@ -120,6 +135,7 @@ export function AddSourceModal({
 							{activeTab === "URL" && "Add web page"}
 							{activeTab === "YOUTUBE" && "Add YouTube video"}
 							{activeTab === "VTT" && "Add transcript(s)"}
+							{activeTab === "PLAYLIST" && "Add YouTube playlist"}
 						</div>
 					</div>
 					<button type="button" className="btn btn-ghost btn-icon" aria-label="Close" onClick={onClose}>
@@ -236,6 +252,31 @@ export function AddSourceModal({
 								<span style={{ fontSize: "13px", fontWeight: 500, marginTop: "4px" }}>YouTube link</span>
 							</button>
 
+							{/* YouTube Playlist Tile */}
+							<button
+								type="button"
+								style={{
+									display: "flex",
+									flexDirection: "column",
+									alignItems: "flex-start",
+									gap: "6px",
+									padding: "14px",
+									borderRadius: "10px",
+									border: "1px solid var(--color-divider)",
+									background: "var(--color-surface)",
+									color: "var(--color-text)",
+									cursor: "pointer",
+									textAlign: "left",
+									width: "100%",
+								}}
+								onClick={() => setActiveTab("PLAYLIST")}
+							>
+								<span style={{ width: "30px", height: "30px", borderRadius: "7px", background: "var(--color-neutral-800)", color: "var(--color-neutral-200)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "9px", fontWeight: 700, letterSpacing: ".02em" }}>
+									YT+
+								</span>
+								<span style={{ fontSize: "13px", fontWeight: 500, marginTop: "4px" }}>YouTube playlist</span>
+							</button>
+
 							{/* VTT Tile */}
 							<button
 								type="button"
@@ -252,7 +293,6 @@ export function AddSourceModal({
 									cursor: "pointer",
 									textAlign: "left",
 									width: "100%",
-									gridColumn: "span 2",
 								}}
 								onClick={() => setActiveTab("VTT")}
 							>
@@ -393,6 +433,34 @@ export function AddSourceModal({
 							</button>
 							<button type="submit" className="btn btn-primary" disabled={submittingYoutube || !youtubeVideo.trim()}>
 								{submittingYoutube ? "Adding…" : "Add YouTube video"}
+							</button>
+						</div>
+					</form>
+				)}
+
+				{activeTab === "PLAYLIST" && (
+					<form onSubmit={onPlaylistSubmit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+						<div className="field">
+							<label htmlFor="playlist-url">Playlist URL</label>
+							<input
+								id="playlist-url"
+								className="input"
+								type="text"
+								placeholder="https://www.youtube.com/playlist?list=…"
+								value={playlistUrl}
+								onChange={(e) => setPlaylistUrl(e.target.value)}
+								required
+							/>
+						</div>
+						<p className="text-muted" style={{ fontSize: "12px", margin: 0 }}>
+							Each video in the playlist becomes its own source (up to 50 videos).
+						</p>
+						<div className="dialog-actions" style={{ marginTop: "12px" }}>
+							<button type="button" className="btn btn-secondary" onClick={handleBack}>
+								Back
+							</button>
+							<button type="submit" className="btn btn-primary" disabled={submittingPlaylist || !playlistUrl.trim()}>
+								{submittingPlaylist ? "Adding…" : "Add playlist"}
 							</button>
 						</div>
 					</form>

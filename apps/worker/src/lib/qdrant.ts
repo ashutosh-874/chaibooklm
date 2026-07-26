@@ -18,3 +18,16 @@ export function upsertPoints(
 ) {
 	return qdrant.upsert(collection, { wait: true, points });
 }
+
+interface QdrantHit {
+	id: string | number;
+	score: number;
+	payload?: Record<string, unknown> | null;
+}
+
+// Topic-scoped roadmap generation needs the same kind of vector search the
+// server's retriever does for chat queries — mirrors searchByVector in
+// apps/server/src/lib/retriever.ts, just against the worker's own client.
+export function searchByVector(collection: string, vector: number[], limit: number): Promise<QdrantHit[]> {
+	return qdrant.search(collection, { vector, limit, with_payload: true }) as unknown as Promise<QdrantHit[]>;
+}

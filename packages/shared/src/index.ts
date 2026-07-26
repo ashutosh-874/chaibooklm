@@ -35,6 +35,13 @@ export interface IngestJobData {
 	sourceId: string;
 }
 
+// BullMQ queue name for roadmap generation, shared by the server (enqueue) and worker (consume).
+export const ROADMAP_QUEUE_NAME = "generate-roadmap";
+
+export interface RoadmapJobData {
+	roadmapId: string;
+}
+
 // Single shared Prisma client instance, used by both server and worker.
 export * from "./db.ts";
 
