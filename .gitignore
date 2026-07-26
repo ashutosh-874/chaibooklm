@@ -1,5 +1,7 @@
 node_modules/
 .env
+.env.*
+!.env.example
 packages/shared/src/generated/
 dist/
 build/
