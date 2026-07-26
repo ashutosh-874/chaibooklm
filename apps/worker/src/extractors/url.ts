@@ -12,6 +12,21 @@ export interface UrlExtractResult {
 	finalUrl: string;
 }
 
+// Below this length, Readability's article-detection heuristic is assumed to
+// have thrown away content it misjudged as boilerplate (nav/card grids/lists
+// rather than prose) — e.g. AWS product pages that describe a concept in a
+// short intro but list the actual answer (which service to use) in a card
+// grid Readability drops entirely. In that case we fall back to the full page
+// text instead of trusting the trimmed article.
+const MIN_ARTICLE_CHARS = 1000;
+
+function extractFullBodyText(document: Document): string {
+	for (const el of document.querySelectorAll("script, style, nav, header, footer, noscript")) {
+		el.remove();
+	}
+	return document.body?.textContent ?? "";
+}
+
 // Fetches a page and pulls out just the article/body text (strips nav, ads,
 // sidebars, etc.) via Readability — the same approach used to clean HTML for
 // RAG elsewhere. Wrapped as a single page (num: null), same shape TEXT
@@ -24,13 +39,30 @@ export async function extractUrl(url: string): Promise<UrlExtractResult> {
 	const dom = new JSDOM(html, { url: finalUrl });
 	const article = new Readability(dom.window.document).parse();
 
-	if (!article || !article.textContent?.trim()) {
+	let text = article?.textContent?.trim() ?? "";
+	
+	// Check if Readability discarded a significant portion of the page content.
+	// We extract the full body text (minus navigation, headers, footers, etc.)
+	// and trigger the fallback if Readability text is under MIN_ARTICLE_CHARS
+	// OR if it accounts for less than 50% of the total non-script text.
+	const fallbackDom = new JSDOM(html, { url: finalUrl });
+	const fullText = extractFullBodyText(fallbackDom.window.document)
+		.replace(/\s+/g, " ")
+		.trim();
+
+	if (text.length < MIN_ARTICLE_CHARS || text.length < fullText.length * 0.5) {
+		if (fullText.length > text.length) {
+			text = fullText;
+		}
+	}
+
+	if (!text) {
 		throw new Error("Could not extract readable article content from this page");
 	}
 
 	return {
-		pages: [{ num: null, text: article.textContent }],
-		title: article.title?.trim() || null,
+		pages: [{ num: null, text }],
+		title: article?.title?.trim() || null,
 		finalUrl,
 	};
 }
