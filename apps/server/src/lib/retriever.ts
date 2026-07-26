@@ -1,6 +1,7 @@
 import { config } from "../config.ts";
-import { embedTexts, openai } from "./openai.ts";
+import { embedTexts, openai, detectLanguage, translateQueries } from "./openai.ts";
 import { qdrant } from "./qdrant.ts";
+import { prisma } from "@chaibooklm/shared";
 
 // Ported from advance-rag-pipeline/src/retriever.js, adapted for OpenAI SDK v6
 // (client construction differs; response_format/streaming shapes are unchanged)
@@ -156,6 +157,49 @@ export async function retrieveChunks(collection: string, query: string): Promise
 		{ label: "hyde", text: hyde },
 		...subQueries.map((q, i) => ({ label: `subQuery${i + 1}`, text: q })),
 	].filter((q) => q.text.trim().length > 0);
+
+	try {
+		// Load READY sources for this notebook to check their stored languages.
+		const notebook = await prisma.notebook.findFirst({
+			where: { qdrantCollection: collection },
+			include: { sources: { where: { status: "READY" } } },
+		});
+
+		const sourceLanguages = new Set<string>();
+		if (notebook?.sources) {
+			for (const source of notebook.sources) {
+				const meta = source.metadata as Record<string, any> | null;
+				if (meta?.language) {
+					sourceLanguages.add(meta.language.toLowerCase());
+				}
+			}
+		}
+
+		if (sourceLanguages.size > 0) {
+			const queryLanguage = await detectLanguage(query);
+			const targetLanguages = [...sourceLanguages].filter((lang) => lang !== queryLanguage);
+
+			if (targetLanguages.length > 0) {
+				console.log(`[retrieval] queryLanguage='${queryLanguage}', targetLanguages=${JSON.stringify(targetLanguages)}`);
+				const originalTexts = labelled.map((q) => q.text);
+				for (const targetLang of targetLanguages) {
+					const translated = await translateQueries(originalTexts, targetLang);
+					for (let i = 0; i < originalTexts.length; i++) {
+						const originalText = originalTexts[i];
+						const translatedText = translated[i];
+						if (translatedText && translatedText.trim().toLowerCase() !== originalText.trim().toLowerCase()) {
+							labelled.push({
+								label: `${labelled[i].label}_${targetLang}`,
+								text: translatedText.trim(),
+							});
+						}
+					}
+				}
+			}
+		}
+	} catch (error) {
+		console.error("[retrieval] failed during multilingual expansion fallback:", error);
+	}
 
 	console.log(
 		"[retrieval] query variants:",

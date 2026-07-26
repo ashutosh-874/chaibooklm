@@ -77,7 +77,8 @@ queryRouter.post("/", async (req, res) => {
 					content:
 						"You are a helpful research assistant. Answer the user's question using ONLY the provided context. " +
 						"Cite sources inline using [n] markers matching the numbered context. " +
-						"If the answer isn't in the context, say you don't know. Be concise.",
+						"If the answer isn't in the context, say you don't know. Be concise. " +
+						"CRITICAL: Answer in the same language as the user's question (e.g., if the user asks in English, reply in English, even if the retrieved context is in Hindi or another language).",
 				},
 				{ role: "user", content: `Context:\n${context}\n\nQuestion: ${query}` },
 			],

@@ -6,7 +6,7 @@ import { extractUrl } from "../extractors/url.ts";
 import { extractVtt } from "../extractors/vtt.ts";
 import { extractYoutube } from "../extractors/youtube.ts";
 import { buildChunks, chunkTimedSegments } from "../lib/chunk.ts";
-import { embedTexts } from "../lib/openai.ts";
+import { embedTexts, detectLanguage } from "../lib/openai.ts";
 import { deleteSourcePoints, ensureCollection, upsertPoints } from "../lib/qdrant.ts";
 
 // The full per-source pipeline: extract -> chunk -> embed -> upsert to Qdrant
@@ -104,7 +104,16 @@ export async function ingestSource(sourceId: string) {
 			data: rows.map((row) => ({ ...row, sourceId: source.id })),
 		});
 
-		await prisma.source.update({ where: { id: sourceId }, data: { status: SourceStatus.READY, title } });
+		// Detect the language of the source text using the first few chunks
+		const textSample = chunks.slice(0, 5).map((c) => c.text).join(" ");
+		const language = await detectLanguage(textSample);
+		const currentMetadata = (source.metadata as Record<string, any>) || {};
+		const updatedMetadata = { ...currentMetadata, language };
+
+		await prisma.source.update({
+			where: { id: sourceId },
+			data: { status: SourceStatus.READY, title, metadata: updatedMetadata },
+		});
 	} catch (err) {
 		const message = err instanceof Error ? err.message : "Ingestion failed";
 		await prisma.source.update({

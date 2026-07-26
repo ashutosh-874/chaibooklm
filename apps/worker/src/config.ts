@@ -18,6 +18,7 @@ export const config = {
 		apiKey: process.env.OPENAI_API_KEY,
 		embeddingModel: process.env.EMBEDDING_MODEL || "text-embedding-3-small",
 		embeddingDimensions: Number(process.env.EMBEDDING_DIMENSIONS) || 1536,
+		chatModel: process.env.CHAT_MODEL || "gpt-4o-mini",
 	},
 	chunking: {
 		chunkSize: Number(process.env.CHUNK_SIZE) || 1000,
