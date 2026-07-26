@@ -75,24 +75,21 @@ export function parseDialogue(script: string): DialogueLine[] {
 	return dialogue;
 }
 
-// Synthesizes a full narration script into a single mp3 buffer. Supports
-// dual-host dialogue via Google Cloud TTS — Host A always speaks in the voice
-// the user picked (the one shown as "selected" in PodcastPanel), Host B gets
-// the other voice, so the picker still controls the primary narrator instead
-// of being silently ignored.
-export async function synthesizeSpeech(script: string, voice: "male" | "female"): Promise<Buffer> {
+// Synthesizes a full narration script into a single mp3 buffer. Dual-host
+// dialogue via Google Cloud TTS — Host A always speaks in GOOGLE_TTS_VOICE_MALE,
+// Host B always in GOOGLE_TTS_VOICE_FEMALE. No per-podcast voice choice: with
+// two fixed hosts there's nothing meaningful left for a user-picked "voice" to
+// control, so it's just the two configured voices every time.
+export async function synthesizeSpeech(script: string): Promise<Buffer> {
 	if (!config.googleTts.apiKey) {
 		throw new Error("Podcast generation isn't configured (missing GOOGLE_TTS_API_KEY)");
 	}
-
-	const voiceNameA = voice === "male" ? config.googleTts.voiceNameMale : config.googleTts.voiceNameFemale;
-	const voiceNameB = voice === "male" ? config.googleTts.voiceNameFemale : config.googleTts.voiceNameMale;
 
 	const dialogue = parseDialogue(script);
 	const buffers: Buffer[] = [];
 
 	for (const line of dialogue) {
-		const voiceName = line.speaker === "A" ? voiceNameA : voiceNameB;
+		const voiceName = line.speaker === "A" ? config.googleTts.voiceNameMale : config.googleTts.voiceNameFemale;
 		// Guard against an unusually long single turn exceeding Google TTS's per-request limit.
 		for (const part of splitScript(line.text)) {
 			buffers.push(await synthesizePart(part, voiceName));

@@ -102,13 +102,11 @@ export interface Roadmap {
 }
 
 export type PodcastStatus = "PENDING" | "GENERATING" | "READY" | "FAILED" | null;
-export type PodcastVoice = "male" | "female";
 
 export interface Podcast {
 	id: string;
 	notebookId: string;
 	status: PodcastStatus;
-	voice: PodcastVoice;
 	topic: string | null;
 	script: string | null;
 	errorMessage?: string | null;
@@ -248,8 +246,8 @@ export const api = {
 		request<Podcast>(`/notebooks/${notebookId}/podcast/${podcastId}`, {}, token),
 	getPodcastTopics: (token: string, notebookId: string) =>
 		request<{ topics: string[] }>(`/notebooks/${notebookId}/podcast/topics`, {}, token),
-	generatePodcast: (token: string, notebookId: string, voice: PodcastVoice, topic: string) =>
-		request<Podcast>(`/notebooks/${notebookId}/podcast`, { method: "POST", body: JSON.stringify({ voice, topic }) }, token),
+	generatePodcast: (token: string, notebookId: string, topic: string) =>
+		request<Podcast>(`/notebooks/${notebookId}/podcast`, { method: "POST", body: JSON.stringify({ topic }) }, token),
 	deletePodcast: (token: string, notebookId: string, podcastId: string) =>
 		request<void>(`/notebooks/${notebookId}/podcast/${podcastId}`, { method: "DELETE" }, token),
 

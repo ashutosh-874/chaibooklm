@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, ApiError, type Podcast, type PodcastVoice } from "../lib/api.ts";
+import { api, ApiError, type Podcast } from "../lib/api.ts";
 
 interface PodcastPanelProps {
 	token: string;
@@ -207,7 +207,6 @@ export function PodcastPanel({ token, notebookId }: PodcastPanelProps) {
 	const [topics, setTopics] = useState<string[] | null>(null);
 	const [loadingTopics, setLoadingTopics] = useState(false);
 	const [customTopic, setCustomTopic] = useState("");
-	const [pickedTopic, setPickedTopic] = useState<string | null>(null);
 
 	// The audio route needs an Authorization header a plain <audio src> can't
 	// send, so the mp3 is fetched as a blob and played from an object URL —
@@ -297,7 +296,6 @@ export function PodcastPanel({ token, notebookId }: PodcastPanelProps) {
 	function openPicker() {
 		setTopics(null);
 		setCustomTopic("");
-		setPickedTopic(null);
 		setError(null);
 		setView("PICKER");
 	}
@@ -315,13 +313,13 @@ export function PodcastPanel({ token, notebookId }: PodcastPanelProps) {
 		}
 	}
 
-	async function handleGenerate(voice: PodcastVoice) {
-		const topic = pickedTopic?.trim();
-		if (!topic) return;
+	async function handleGenerate(topic: string | null) {
+		const trimmedTopic = topic?.trim();
+		if (!trimmedTopic) return;
 		setGenerating(true);
 		setError(null);
 		try {
-			const podcast = await api.generatePodcast(token, notebookId, voice, topic);
+			const podcast = await api.generatePodcast(token, notebookId, trimmedTopic);
 			setPodcasts((prev) => [podcast, ...prev]);
 			setSelected(podcast);
 			setView("DETAIL");
@@ -357,7 +355,7 @@ export function PodcastPanel({ token, notebookId }: PodcastPanelProps) {
 								</svg>
 							</div>
 							<p className="text-muted" style={{ fontSize: "13px" }}>
-								Turn this notebook's sources into a spoken narration you can listen to, in a male or female voice.
+								Turn this notebook's sources into a two-host podcast dialogue you can listen to.
 							</p>
 						</div>
 					) : (
@@ -366,7 +364,7 @@ export function PodcastPanel({ token, notebookId }: PodcastPanelProps) {
 								<button key={podcast.id} type="button" onClick={() => openPodcast(podcast)} className="list-row">
 									<div style={{ flex: 1, minWidth: 0 }}>
 										<div style={{ fontSize: "13px", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-											{podcast.topic} <span className="text-muted">· {podcast.voice === "male" ? "male" : "female"}</span>
+											{podcast.topic}
 										</div>
 										<div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "4px" }}>
 											<span className={`status-badge status-${(podcast.status ?? "").toLowerCase()}`}>
@@ -401,7 +399,7 @@ export function PodcastPanel({ token, notebookId }: PodcastPanelProps) {
 						<h4 style={{ margin: 0 }}>New podcast</h4>
 					</div>
 					<p className="text-muted" style={{ fontSize: "13px" }}>
-						Pick a topic to narrate — a spoken-style script scoped to that topic will be generated and read aloud.
+						Pick a topic to narrate — a two-host dialogue script scoped to that topic will be generated and read aloud.
 					</p>
 
 					{topics === null ? (
@@ -417,8 +415,8 @@ export function PodcastPanel({ token, notebookId }: PodcastPanelProps) {
 											key={topic}
 											type="button"
 											className="tag tag-outline"
-											style={{ cursor: "pointer", ...(pickedTopic === topic ? { fontWeight: 700 } : {}) }}
-											onClick={() => setPickedTopic(topic)}
+											style={{ cursor: "pointer" }}
+											onClick={() => handleGenerate(topic)}
 											disabled={generating}
 										>
 											{topic}
@@ -426,25 +424,24 @@ export function PodcastPanel({ token, notebookId }: PodcastPanelProps) {
 									))}
 								</div>
 							)}
-							<input
-								className="input"
-								type="text"
-								placeholder="Or type your own topic…"
-								value={customTopic}
-								onChange={(e) => {
-									setCustomTopic(e.target.value);
-									setPickedTopic(e.target.value);
+							<form
+								onSubmit={(e) => {
+									e.preventDefault();
+									handleGenerate(customTopic);
 								}}
-							/>
-
-							<div style={{ display: "flex", gap: "10px", justifyContent: "center", marginTop: "16px" }}>
-								<button type="button" className="btn btn-secondary" onClick={() => handleGenerate("male")} disabled={generating || !pickedTopic?.trim()}>
-									{generating ? "Starting…" : "Male voice"}
+								style={{ display: "flex", gap: "8px" }}
+							>
+								<input
+									className="input"
+									type="text"
+									placeholder="Or type your own topic…"
+									value={customTopic}
+									onChange={(e) => setCustomTopic(e.target.value)}
+								/>
+								<button type="submit" className="btn btn-primary" disabled={generating || !customTopic.trim()}>
+									{generating ? "Starting…" : "Go"}
 								</button>
-								<button type="button" className="btn btn-secondary" onClick={() => handleGenerate("female")} disabled={generating || !pickedTopic?.trim()}>
-									{generating ? "Starting…" : "Female voice"}
-								</button>
-							</div>
+							</form>
 						</div>
 					)}
 				</div>
@@ -459,7 +456,7 @@ export function PodcastPanel({ token, notebookId }: PodcastPanelProps) {
 							</svg>
 						</button>
 						<span className="text-muted" style={{ fontSize: "13px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-							{selected.voice === "male" ? "Male voice" : "Female voice"} podcast for: <strong>{selected.topic}</strong>
+							Podcast for: <strong>{selected.topic}</strong>
 						</span>
 					</div>
 

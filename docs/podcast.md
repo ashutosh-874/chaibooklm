@@ -1,10 +1,10 @@
 # Podcast (bonus feature)
 
-Flow: **suggest topics → pick one + voice → retrieval-scoped script → Google TTS → mp3.**
+Flow: **suggest topics → pick one → retrieval-scoped two-host dialogue script → Google TTS → mp3.**
 
 ## Schema
 
-`Podcast` in [prisma/schema.prisma](../prisma/schema.prisma) — `status` (`PENDING|GENERATING|READY|FAILED`), `voice` (`"male"|"female"`), `topic`, `script`, `audioPath`. Many rows per notebook.
+`Podcast` in [prisma/schema.prisma](../prisma/schema.prisma) — `status` (`PENDING|GENERATING|READY|FAILED`), `topic`, `script`, `audioPath`. Many rows per notebook. No per-podcast voice field — see below.
 
 ## Topic suggestions
 
@@ -12,7 +12,7 @@ Same `suggestTopics()` as roadmap — `GET /notebooks/:notebookId/podcast/topics
 
 ## Generation route
 
-`POST /notebooks/:notebookId/podcast` `{ voice, topic }` — creates `Podcast` row (`PENDING`), enqueues, 202. `GET /:podcastId/file` streams the mp3 (`res.type("audio/mpeg")`).
+`POST /notebooks/:notebookId/podcast` `{ topic }` — creates `Podcast` row (`PENDING`), enqueues, 202. `GET /:podcastId/file` streams the mp3 (`res.type("audio/mpeg")`).
 
 ## Worker job
 
@@ -25,7 +25,7 @@ export async function generatePodcast(podcastId: string) {
 	const hits = await searchByVector(notebook.qdrantCollection, vector, RETRIEVAL_TOP_K); // 30
 	// group retrieved chunks by source
 	const script = await generatePodcastScript(sourceInputs, topic); // plain text, not JSON
-	const audioBuffer = await synthesizeSpeech(script, voice);
+	const audioBuffer = await synthesizeSpeech(script);
 	await fs.writeFile(path.join(uploadDir, `podcast-${podcastId}.mp3`), audioBuffer);
 	// status = READY, script + audioPath stored
 }
@@ -44,11 +44,10 @@ Same topic-embed → Qdrant-search pattern as [roadmap.md](roadmap.md), grouped 
 [apps/worker/src/lib/googleTts.ts](../apps/worker/src/lib/googleTts.ts):
 
 1. `parseDialogue(script)` splits the script into `{ speaker: "A" | "B", text }` lines by the `Host A:`/`Host B:` prefixes.
-2. `synthesizeSpeech(script, voice)` maps the user's picked `voice` to Host A, and the opposite voice to Host B — so the picker still controls the primary narrator's voice instead of always producing a fixed male/female pairing:
+2. `synthesizeSpeech(script)` always maps Host A → `GOOGLE_TTS_VOICE_MALE`, Host B → `GOOGLE_TTS_VOICE_FEMALE`. No per-podcast voice choice — with two fixed hosts there's nothing left for a user-picked "voice" to control, so both configured voices are always used:
 
 ```ts
-const voiceNameA = voice === "male" ? config.googleTts.voiceNameMale : config.googleTts.voiceNameFemale;
-const voiceNameB = voice === "male" ? config.googleTts.voiceNameFemale : config.googleTts.voiceNameMale;
+const voiceName = line.speaker === "A" ? config.googleTts.voiceNameMale : config.googleTts.voiceNameFemale;
 ```
 
 3. Each dialogue line is synthesized separately via direct `fetch` to the Google Cloud TTS REST API, **API-key auth** (`?key=`), not a service account:
@@ -72,4 +71,4 @@ fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`, {
 
 ## Frontend
 
-[apps/web/src/components/PodcastPanel.tsx](../apps/web/src/components/PodcastPanel.tsx) — list → topic+voice picker → detail. Audio fetched as an authenticated blob (`fetchPodcastFile`) and played via `URL.createObjectURL` — a plain `<audio src>` can't send the `Authorization` header the file route requires.
+[apps/web/src/components/PodcastPanel.tsx](../apps/web/src/components/PodcastPanel.tsx) — list → topic picker → detail (custom audio player + chat-bubble dialogue transcript, Host A/B color-coded). Audio fetched as an authenticated blob (`fetchPodcastFile`) and played via `URL.createObjectURL` — a plain `<audio src>` can't send the `Authorization` header the file route requires.

@@ -48,23 +48,23 @@ podcastRouter.get("/:podcastId", async (req, res) => {
 });
 
 const generatePodcastSchema = z.object({
-	voice: z.enum(["male", "female"]),
 	topic: z.string().trim().min(1).max(200),
 });
 
 // Creates a new podcast scoped to a topic the user picked — the worker
 // retrieves only chunks relevant to that topic (same Qdrant search as chat
 // queries and roadmap generation) instead of scanning every source, then
-// writes a narration script and synthesizes it via ElevenLabs TTS. Each
-// generation is its own row, kept in the notebook's podcast history rather
-// than overwriting a prior one.
+// writes a two-host dialogue script and synthesizes it via Google Cloud TTS
+// (Host A/B always use the two voices configured in .env — no per-podcast
+// voice choice). Each generation is its own row, kept in the notebook's
+// podcast history rather than overwriting a prior one.
 podcastRouter.post("/", async (req, res) => {
 	const notebook = await getOwnedNotebook(req.params.notebookId as string, req.userId);
 	if (!notebook) return res.status(404).json({ error: "Notebook not found" });
 
 	const parsed = generatePodcastSchema.safeParse(req.body);
 	if (!parsed.success) {
-		return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "A 'voice' and 'topic' are required" });
+		return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "A 'topic' is required" });
 	}
 
 	const readyCount = await prisma.source.count({ where: { notebookId: notebook.id, status: "READY" } });
@@ -73,7 +73,7 @@ podcastRouter.post("/", async (req, res) => {
 	}
 
 	const podcast = await prisma.podcast.create({
-		data: { notebookId: notebook.id, status: PodcastStatus.PENDING, voice: parsed.data.voice, topic: parsed.data.topic },
+		data: { notebookId: notebook.id, status: PodcastStatus.PENDING, topic: parsed.data.topic },
 	});
 
 	await enqueuePodcastJob(podcast.id);

@@ -101,7 +101,6 @@ model Podcast {
   notebookId   String // a notebook can have many podcasts — kept and listed, not overwritten
   notebook     Notebook      @relation(fields: [notebookId], references: [id], onDelete: Cascade)
   status       PodcastStatus @default(PENDING)
-  voice        String // "male" | "female"
   topic        String? // the concept/topic the user picked to scope the narration to
   script       String? // generated narration text, shown alongside the audio player
   audioPath    String? // on-disk path under apps/server/uploads, same convention as PDF/VTT sources

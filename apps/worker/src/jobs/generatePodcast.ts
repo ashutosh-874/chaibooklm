@@ -55,8 +55,7 @@ export async function generatePodcast(podcastId: string) {
 			throw new Error("Couldn't generate a narration script from these sources");
 		}
 
-		const voice = existing.voice === "female" ? "female" : "male";
-		const audioBuffer = await synthesizeSpeech(script, voice);
+		const audioBuffer = await synthesizeSpeech(script);
 
 		const audioPath = path.join(uploadDir, `podcast-${podcastId}.mp3`);
 		await fs.writeFile(audioPath, audioBuffer);
