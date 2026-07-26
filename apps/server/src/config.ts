@@ -9,12 +9,15 @@ dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 export const config = {
 	port: Number(process.env.PORT) || 8000,
 	databaseUrl: process.env.DATABASE_URL,
+	// A full connection URL (redis://, or rediss:// for TLS — e.g. Upstash) covers
+	// both local dev and managed Redis without separate host/port/password/tls fields.
 	redis: {
-		host: process.env.REDIS_HOST || "127.0.0.1",
-		port: Number(process.env.REDIS_PORT) || 6379,
+		url: process.env.REDIS_URL || "redis://127.0.0.1:6379",
 	},
 	qdrant: {
 		url: process.env.QDRANT_URL || "http://127.0.0.1:6333",
+		// Required by managed Qdrant (e.g. Qdrant Cloud); local dev instances ignore it.
+		apiKey: process.env.QDRANT_API_KEY,
 	},
 	openai: {
 		apiKey: process.env.OPENAI_API_KEY,

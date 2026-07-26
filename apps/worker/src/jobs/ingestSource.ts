@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { prisma, SourceStatus, SourceType } from "@chaibooklm/shared";
+import { downloadObject, prisma, SourceStatus, SourceType } from "@chaibooklm/shared";
 import { extractPdf } from "../extractors/pdf.ts";
 import { extractText } from "../extractors/text.ts";
 import { extractUrl } from "../extractors/url.ts";
@@ -24,9 +24,9 @@ export async function ingestSource(sourceId: string) {
 	});
 
 	try {
-		// originIdentifier holds a disk path for PDFs and VTT/SRT files, the raw
-		// text itself for TEXT, the URL itself for URL sources, and the video ID
-		// for YouTube sources.
+		// originIdentifier holds an S3 object key for PDFs and VTT/SRT files, the
+		// raw text itself for TEXT, the URL itself for URL sources, and the video
+		// ID for YouTube sources.
 		let title = source.title;
 		let sourceUrl = source.originIdentifier; // overwritten below with the post-redirect URL, for URL sources
 		let chunks: Array<{ text: string; locator: Record<string, string | number | null> }>;
@@ -41,12 +41,14 @@ export async function ingestSource(sourceId: string) {
 				locator: { ...c.locator, videoId: source.originIdentifier },
 			}));
 		} else if (source.type === SourceType.VTT) {
-			const segments = extractVtt(source.originIdentifier);
+			const raw = await downloadObject(source.originIdentifier);
+			const segments = extractVtt(raw.toString("utf-8"));
 			chunks = chunkTimedSegments(segments).map((c) => ({ text: c.text, locator: c.locator }));
 		} else {
 			let pages: Awaited<ReturnType<typeof extractPdf>>;
 			if (source.type === SourceType.PDF) {
-				pages = await extractPdf(source.originIdentifier);
+				const data = await downloadObject(source.originIdentifier);
+				pages = await extractPdf(data);
 			} else if (source.type === SourceType.URL) {
 				const result = await extractUrl(source.originIdentifier);
 				pages = result.pages;

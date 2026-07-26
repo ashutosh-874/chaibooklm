@@ -31,7 +31,37 @@ services:
     volumes:
       - redis_data:/data
 
+  # Local S3-compatible storage — same role as AWS S3/R2 in production, so
+  # local dev needs no cloud account for uploaded PDFs/VTTs or generated
+  # podcast mp3s. apps/*'s S3_* env vars just point at this instead.
+  minio:
+    image: minio/minio:latest
+    container_name: chaibooklm-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000" # S3 API
+      - "9001:9001" # Web console
+    volumes:
+      - minio_data:/data
+
+  # One-shot: creates the bucket the app expects, then exits. Re-running
+  # `docker compose up` is idempotent (`mc mb --ignore-existing`).
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 minioadmin minioadmin; do sleep 1; done;
+      mc mb --ignore-existing local/chaibooklm;
+      "
+
 volumes:
   postgres_data:
   qdrant_data:
   redis_data:
+  minio_data:

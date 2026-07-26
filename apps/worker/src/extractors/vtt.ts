@@ -1,12 +1,11 @@
-import fs from "node:fs";
 import { parseSync } from "subtitle";
 import type { TimedSegment } from "../lib/chunk.ts";
 
 // `subtitle`'s parseSync auto-detects SRT vs WebVTT and returns a unified cue
 // list ({start,end} in ms) either way — one parser handles both formats, so
-// there's no separate SRT code path needed.
-export function extractVtt(filePath: string): TimedSegment[] {
-	const raw = fs.readFileSync(filePath, "utf-8");
+// there's no separate SRT code path needed. Takes the raw file text directly
+// (already downloaded from S3 by the caller) rather than reading from disk.
+export function extractVtt(raw: string): TimedSegment[] {
 	const nodes = parseSync(raw);
 
 	const segments: TimedSegment[] = [];

@@ -63,3 +63,6 @@ export * from "./db.ts";
 
 // Qdrant point-level helpers, used by both server and worker.
 export * from "./qdrant.ts";
+
+// S3-compatible object storage helpers, used by both server and worker.
+export * from "./storage.ts";

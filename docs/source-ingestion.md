@@ -14,7 +14,7 @@ Pipeline: **extract → chunk → embed → upsert to Qdrant → write Chunk row
 | `POST /` (`{ video }`) | `YOUTUBE` |
 | `POST /youtube-playlist` (`{ playlistUrl }`) | many `YOUTUBE` rows, one per video |
 | `POST /vtt-zip` (multipart `file`) | many `VTT` rows, one per transcript in the zip |
-| `DELETE /:sourceId` | removes Qdrant points + Postgres cascade + disk file |
+| `DELETE /:sourceId` | removes Qdrant points + Postgres cascade + S3 object |
 | `POST /:sourceId/reindex` | resets to `UPLOADING`, re-enqueues |
 
 Every create path ends in `enqueueIngestJob(source.id)` — [apps/server/src/lib/queue.ts](../apps/server/src/lib/queue.ts).
@@ -35,7 +35,8 @@ export async function ingestSource(sourceId: string) {
 		const result = await extractYoutube(source.originIdentifier);
 		chunks = chunkTimedSegments(result.segments).map(...);
 	} else if (source.type === SourceType.VTT) {
-		chunks = chunkTimedSegments(extractVtt(source.originIdentifier)).map(...);
+		const raw = await downloadObject(source.originIdentifier); // originIdentifier is an S3 key
+		chunks = chunkTimedSegments(extractVtt(raw.toString("utf-8"))).map(...);
 	} else {
 		// PDF / URL / TEXT -> pages, then
 		chunks = buildChunks(pages);
@@ -83,6 +84,14 @@ Stored on `Chunk.locator` (Json) and denormalized into the Qdrant payload:
 - TEXT: `{ charStart, charEnd }`
 - URL: `{ charStart, charEnd, sourceUrl }`
 - YOUTUBE / VTT: `{ startSec, endSec, videoId? }`
+
+## File storage
+
+`server` and `worker` run as separate containers/filesystems in production, so uploaded PDF/VTT files are never kept on local disk — [packages/shared/src/storage.ts](../packages/shared/src/storage.ts) wraps an S3-compatible client (`@aws-sdk/client-s3`). Local dev uses the `minio` service in [docker-compose.yml](../docker-compose.yml) (a self-hosted S3-compatible server, bucket auto-created by the `minio-init` one-shot container); production points the same code at real AWS S3 or Cloudflare R2 — just different `S3_*` env vars, no code change. `Source.originIdentifier` for PDF/VTT sources is an S3 **object key**, not a path:
+- `POST /sources` (server) uploads the multipart file buffer via `uploadObject(key, buffer)`.
+- `ingestSource` (worker) downloads it via `downloadObject(key)` before handing the buffer/text to the PDF/VTT extractor.
+- `GET /sources/:id/file` (server, for `SourceViewer`) downloads and streams it back.
+- `DELETE /sources/:id` and notebook deletion both call `deleteObject(key)`.
 
 ## Cross-lingual note
 

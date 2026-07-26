@@ -1,0 +1,13 @@
+node_modules
+**/node_modules
+.git
+.env
+uploads
+apps/server/uploads
+packages/shared/src/generated
+apps/web/dist
+apps/web/node_modules
+*.log
+.DS_Store
+docs
+.claude

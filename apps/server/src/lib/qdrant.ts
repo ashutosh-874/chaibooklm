@@ -2,7 +2,7 @@ import { QdrantClient } from "@qdrant/js-client-rest";
 import * as shared from "@chaibooklm/shared";
 import { config } from "../config.ts";
 
-export const qdrant = new QdrantClient({ url: config.qdrant.url });
+export const qdrant = new QdrantClient({ url: config.qdrant.url, apiKey: config.qdrant.apiKey });
 
 // Thin bindings of the shared point-level helpers to this app's client + config,
 // so route handlers can call `ensureCollection(name)` without threading `qdrant` through.

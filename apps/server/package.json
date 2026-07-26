@@ -15,6 +15,7 @@
     "bullmq": "^5.81.2",
     "cors": "^2.8.6",
     "express": "^5.2.1",
+    "ioredis": "^5.11.1",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.2.0",
     "openai": "^6.49.0",

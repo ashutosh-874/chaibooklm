@@ -9,17 +9,18 @@ import {
 	type RoadmapJobData,
 } from "@chaibooklm/shared";
 import { Worker } from "bullmq";
+import IORedis from "ioredis";
 import { config } from "./config.ts";
 import { generateFlashcards } from "./jobs/generateFlashcards.ts";
 import { generatePodcast } from "./jobs/generatePodcast.ts";
 import { generateRoadmap } from "./jobs/generateRoadmap.ts";
 import { ingestSource } from "./jobs/ingestSource.ts";
 
-const connection = {
-	host: config.redis.host,
-	port: config.redis.port,
-	maxRetriesPerRequest: null,
-};
+// A single ioredis instance shared across every Worker below — BullMQ duplicates
+// it internally for blocking commands, so one connection is fine here (same
+// pattern as apps/server/src/lib/queue.ts). Parses `rediss://` URLs (e.g.
+// Upstash) as TLS automatically, same as plain `redis://` for local dev.
+const connection = new IORedis(config.redis.url, { maxRetriesPerRequest: null });
 
 const ingestWorker = new Worker<IngestJobData>(
 	INGEST_QUEUE_NAME,

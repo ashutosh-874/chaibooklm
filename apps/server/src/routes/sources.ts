@@ -1,8 +1,6 @@
 import crypto from "node:crypto";
-import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { prisma, SourceStatus, SourceType } from "@chaibooklm/shared";
+import { deleteObject, downloadObject, prisma, SourceStatus, SourceType, uploadObject } from "@chaibooklm/shared";
 import AdmZip from "adm-zip";
 import { Router } from "express";
 import multer from "multer";
@@ -18,17 +16,12 @@ import { requireAuth } from "../middleware/requireAuth.ts";
 export const sourcesRouter = Router({ mergeParams: true });
 sourcesRouter.use(requireAuth);
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const uploadDir = path.join(__dirname, "..", "..", "uploads");
-fs.mkdirSync(uploadDir, { recursive: true });
-
-// PDFs/VTT/SRT are kept on disk (not just at upload time) because reindex
-// re-reads the same file rather than requiring a fresh upload.
+// Buffered in memory, then uploaded to S3 — server and worker run as separate
+// containers/filesystems in production, so local disk can't be shared between
+// them (see packages/shared/src/storage.ts). Reindex re-downloads the same S3
+// object rather than requiring a fresh upload.
 const upload = multer({
-	storage: multer.diskStorage({
-		destination: (_req, _file, cb) => cb(null, uploadDir),
-		filename: (_req, file, cb) => cb(null, `${Date.now()}-${crypto.randomUUID()}${path.extname(file.originalname)}`),
-	}),
+	storage: multer.memoryStorage(),
 	limits: { fileSize: 25 * 1024 * 1024 }, // 25 MB
 	fileFilter: (_req, file, cb) => {
 		// PDF is checked by mimetype (reliable for PDFs); VTT/SRT mimetypes are
@@ -42,9 +35,9 @@ const upload = multer({
 
 const MAX_ZIP_LECTURES = 300;
 
-// Zip is buffered in memory (not disk) because it's unpacked and filtered
-// in-process via adm-zip before anything is written — only the kept
-// .vtt/.srt entries end up on disk, in uploadDir, same as any other source file.
+// Zip is buffered in memory because it's unpacked and filtered in-process via
+// adm-zip before anything is written — only the kept .vtt/.srt entries get
+// uploaded to S3, same as any other source file.
 const uploadZip = multer({
 	storage: multer.memoryStorage(),
 	limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB — transcripts are plain text, generous
@@ -116,7 +109,8 @@ sourcesRouter.post("/", upload.single("file"), async (req, res) => {
 		type = isTranscript ? SourceType.VTT : SourceType.PDF;
 		const defaultTitle = isTranscript ? path.basename(req.file.originalname, ext) : req.file.originalname;
 		title = (req.body?.title as string | undefined)?.trim() || defaultTitle;
-		originIdentifier = req.file.path;
+		originIdentifier = `sources/${crypto.randomUUID()}${ext}`;
+		await uploadObject(originIdentifier, req.file.buffer, req.file.mimetype);
 	} else if (typeof req.body?.url === "string") {
 		const parsed = urlSourceSchema.safeParse(req.body);
 		if (!parsed.success) {
@@ -213,9 +207,8 @@ sourcesRouter.post("/vtt-zip", uploadZip.single("file"), async (req, res) => {
 		const entryData = zip.readFile(entryName);
 		if (!entryData) continue; // shouldn't happen, but don't let one bad entry 500 the whole batch
 
-		const diskName = `${Date.now()}-${crypto.randomUUID()}${ext}`;
-		const diskPath = path.join(uploadDir, diskName);
-		await fs.promises.writeFile(diskPath, entryData);
+		const key = `sources/${crypto.randomUUID()}${ext}`;
+		await uploadObject(key, entryData);
 
 		// The sample export nests each lecture in its own same-named subfolder
 		// (module/lecture/lecture.vtt) — when that's the case, the *module*
@@ -226,7 +219,7 @@ sourcesRouter.post("/vtt-zip", uploadZip.single("file"), async (req, res) => {
 		const title = moduleFolder && moduleFolder !== "." ? `${moduleFolder} — ${base}` : base;
 
 		const source = await prisma.source.create({
-			data: { notebookId: notebook.id, type: SourceType.VTT, title, originIdentifier: diskPath, status: SourceStatus.UPLOADING },
+			data: { notebookId: notebook.id, type: SourceType.VTT, title, originIdentifier: key, status: SourceStatus.UPLOADING },
 		});
 		await enqueueIngestJob(source.id);
 		sources.push(source);
@@ -278,10 +271,13 @@ sourcesRouter.get("/:sourceId/file", async (req, res) => {
 	});
 	if (!source) return res.status(404).json({ error: "PDF source not found" });
 
-	res.type("application/pdf");
-	res.sendFile(source.originIdentifier, (err) => {
-		if (err && !res.headersSent) res.status(404).json({ error: "File no longer exists on disk" });
-	});
+	try {
+		const buffer = await downloadObject(source.originIdentifier);
+		res.type("application/pdf");
+		res.send(buffer);
+	} catch {
+		res.status(404).json({ error: "File no longer exists in storage" });
+	}
 });
 
 sourcesRouter.delete("/:sourceId", async (req, res) => {
@@ -296,7 +292,7 @@ sourcesRouter.delete("/:sourceId", async (req, res) => {
 	await deleteSourcePoints(notebook.qdrantCollection, source.id);
 	await prisma.source.delete({ where: { id: source.id } }); // cascades to Chunk rows
 	if (source.type === SourceType.PDF || source.type === SourceType.VTT) {
-		await fs.promises.unlink(source.originIdentifier).catch(() => {}); // best-effort; file may already be gone
+		await deleteObject(source.originIdentifier).catch(() => {}); // best-effort; object may already be gone
 	}
 	res.status(204).send();
 });

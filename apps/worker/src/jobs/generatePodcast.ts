@@ -1,10 +1,7 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-import { prisma, PodcastStatus } from "@chaibooklm/shared";
+import { prisma, PodcastStatus, uploadObject } from "@chaibooklm/shared";
 import { synthesizeSpeech } from "../lib/googleTts.ts";
 import { embedTexts, generatePodcastScript } from "../lib/openai.ts";
 import { searchByVector } from "../lib/qdrant.ts";
-import { uploadDir } from "../lib/uploads.ts";
 
 // Caps how many chunks feed the script prompt — bounded regardless of
 // notebook size because these are the topic's top retrieval hits, same
@@ -57,8 +54,8 @@ export async function generatePodcast(podcastId: string) {
 
 		const audioBuffer = await synthesizeSpeech(script);
 
-		const audioPath = path.join(uploadDir, `podcast-${podcastId}.mp3`);
-		await fs.writeFile(audioPath, audioBuffer);
+		const audioPath = `podcasts/${podcastId}.mp3`;
+		await uploadObject(audioPath, audioBuffer, "audio/mpeg");
 
 		await prisma.podcast.update({
 			where: { id: podcastId },

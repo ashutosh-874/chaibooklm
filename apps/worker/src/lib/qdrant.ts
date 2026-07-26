@@ -2,7 +2,7 @@ import { QdrantClient } from "@qdrant/js-client-rest";
 import * as shared from "@chaibooklm/shared";
 import { config } from "../config.ts";
 
-export const qdrant = new QdrantClient({ url: config.qdrant.url });
+export const qdrant = new QdrantClient({ url: config.qdrant.url, apiKey: config.qdrant.apiKey });
 
 export const ensureCollection = (name: string) =>
 	shared.ensureCollection(qdrant, name, config.openai.embeddingDimensions);

@@ -26,8 +26,8 @@ export async function generatePodcast(podcastId: string) {
 	// group retrieved chunks by source
 	const script = await generatePodcastScript(sourceInputs, topic); // plain text, not JSON
 	const audioBuffer = await synthesizeSpeech(script);
-	await fs.writeFile(path.join(uploadDir, `podcast-${podcastId}.mp3`), audioBuffer);
-	// status = READY, script + audioPath stored
+	await uploadObject(`podcasts/${podcastId}.mp3`, audioBuffer, "audio/mpeg");
+	// status = READY, script + audioPath (S3 key) stored
 }
 ```
 
@@ -61,9 +61,9 @@ fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`, {
 
 4. Any single turn over ~4500 chars is further split on paragraph boundaries (`splitScript`) — Google TTS caps request text at 5,000 bytes. All resulting mp3 buffers are concatenated in order (`Buffer.concat`).
 
-## Shared file storage
+## File storage
 
-[apps/worker/src/lib/uploads.ts](../apps/worker/src/lib/uploads.ts) — worker writes to the same `apps/server/uploads` directory the server's multer uploads use (`path.join(__dirname, "..", "..", "..", "server", "uploads")`), so the server's file route can read it back with no extra plumbing.
+`server` and `worker` are separate containers/filesystems in production, so the generated mp3 is never kept on local disk — [packages/shared/src/storage.ts](../packages/shared/src/storage.ts) uploads it to S3-compatible storage (see [source-ingestion.md](source-ingestion.md#file-storage) for the same mechanism used by PDF/VTT sources). `Podcast.audioPath` is an S3 key; `GET /:podcastId/file` downloads and streams it back.
 
 ## Env
 

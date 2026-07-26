@@ -1,5 +1,4 @@
-import fs from "node:fs/promises";
-import { prisma, PodcastStatus } from "@chaibooklm/shared";
+import { deleteObject, downloadObject, prisma, PodcastStatus } from "@chaibooklm/shared";
 import { Router } from "express";
 import { z } from "zod";
 import { getOwnedNotebook } from "../lib/ownership.ts";
@@ -91,7 +90,7 @@ podcastRouter.delete("/:podcastId", async (req, res) => {
 
 	await prisma.podcast.delete({ where: { id: podcast.id } });
 	if (podcast.audioPath) {
-		await fs.unlink(podcast.audioPath).catch(() => {}); // best-effort; file may already be gone
+		await deleteObject(podcast.audioPath).catch(() => {}); // best-effort; object may already be gone
 	}
 	res.status(204).send();
 });
@@ -106,8 +105,11 @@ podcastRouter.get("/:podcastId/file", async (req, res) => {
 	});
 	if (!podcast?.audioPath) return res.status(404).json({ error: "Podcast audio not found" });
 
-	res.type("audio/mpeg");
-	res.sendFile(podcast.audioPath, (err) => {
-		if (err && !res.headersSent) res.status(404).json({ error: "File no longer exists on disk" });
-	});
+	try {
+		const buffer = await downloadObject(podcast.audioPath);
+		res.type("audio/mpeg");
+		res.send(buffer);
+	} catch {
+		res.status(404).json({ error: "File no longer exists in storage" });
+	}
 });

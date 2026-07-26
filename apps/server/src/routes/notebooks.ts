@@ -1,7 +1,6 @@
 import crypto from "node:crypto";
-import fs from "node:fs";
 import { Router } from "express";
-import { prisma, SourceType } from "@chaibooklm/shared";
+import { deleteObject, prisma, SourceType } from "@chaibooklm/shared";
 import { z } from "zod";
 import { getOwnedNotebook } from "../lib/ownership.ts";
 import { deleteCollection, ensureCollection } from "../lib/qdrant.ts";
@@ -62,13 +61,23 @@ notebooksRouter.delete("/:id", async (req, res) => {
 	const notebook = await getOwnedNotebook(req.params.id, req.userId);
 	if (!notebook) return res.status(404).json({ error: "Notebook not found" });
 
-	// Postgres cascade deletes Source/Chunk rows, but uploaded PDF/VTT files on
-	// disk need an explicit cleanup pass first (best-effort; a missing file is fine).
-	const fileSources = await prisma.source.findMany({
-		where: { notebookId: notebook.id, type: { in: [SourceType.PDF, SourceType.VTT] } },
-		select: { originIdentifier: true },
-	});
-	await Promise.all(fileSources.map((s) => fs.promises.unlink(s.originIdentifier).catch(() => {})));
+	// Postgres cascade deletes Source/Chunk/Podcast rows, but their S3 objects
+	// (uploaded PDF/VTT files, generated podcast mp3s) need an explicit cleanup
+	// pass first (best-effort; a missing object is fine).
+	const [fileSources, podcasts] = await Promise.all([
+		prisma.source.findMany({
+			where: { notebookId: notebook.id, type: { in: [SourceType.PDF, SourceType.VTT] } },
+			select: { originIdentifier: true },
+		}),
+		prisma.podcast.findMany({
+			where: { notebookId: notebook.id, audioPath: { not: null } },
+			select: { audioPath: true },
+		}),
+	]);
+	await Promise.all([
+		...fileSources.map((s) => deleteObject(s.originIdentifier).catch(() => {})),
+		...podcasts.map((p) => deleteObject(p.audioPath as string).catch(() => {})),
+	]);
 
 	await deleteCollection(notebook.qdrantCollection);
 	await prisma.notebook.delete({ where: { id: notebook.id } });

@@ -9,14 +9,13 @@ import {
 	type RoadmapJobData,
 } from "@chaibooklm/shared";
 import { Queue } from "bullmq";
+import IORedis from "ioredis";
 import { config } from "../config.ts";
 
-// BullMQ needs `maxRetriesPerRequest: null` on the connection it uses.
-const connection = {
-	host: config.redis.host,
-	port: config.redis.port,
-	maxRetriesPerRequest: null,
-};
+// A single ioredis instance shared across every Queue below — BullMQ needs
+// `maxRetriesPerRequest: null` on it, and ioredis parses `rediss://` URLs
+// (e.g. Upstash) as TLS automatically, same as plain `redis://` for local dev.
+const connection = new IORedis(config.redis.url, { maxRetriesPerRequest: null });
 
 const ingestQueue = new Queue<IngestJobData>(INGEST_QUEUE_NAME, { connection });
 const roadmapQueue = new Queue<RoadmapJobData>(ROADMAP_QUEUE_NAME, { connection });
