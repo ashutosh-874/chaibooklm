@@ -35,13 +35,23 @@ Same topic-embed → Qdrant-search pattern as [roadmap.md](roadmap.md), grouped 
 
 ## Script generation
 
-`generatePodcastScript` in [apps/worker/src/lib/openai.ts](../apps/worker/src/lib/openai.ts) — plain chat completion (no structured JSON, same style as `hydeDocument` in [rag-query.md](rag-query.md)):
+`generatePodcastScript` in [apps/worker/src/lib/openai.ts](../apps/worker/src/lib/openai.ts) — plain chat completion (no structured JSON, same style as `hydeDocument` in [rag-query.md](rag-query.md)). Writes a **two-host dialogue**, not a solo narration:
 
-> "You are a podcast host writing a solo narration script about the topic... 700-1000 words... no stage directions, sound effect cues, or headings."
+> "You are writing a podcast dialogue script between two hosts (Host A and Host B)... Host A is the main deep-dive narrator/expert and Host B asks inquisitive, clarifying questions... formatted exactly as sequential dialogue lines starting with either 'Host A: ' or 'Host B: '."
 
 ## Text-to-speech
 
-[apps/worker/src/lib/googleTts.ts](../apps/worker/src/lib/googleTts.ts) — direct `fetch` to Google Cloud TTS REST API, **API-key auth** (`?key=`), not a service account:
+[apps/worker/src/lib/googleTts.ts](../apps/worker/src/lib/googleTts.ts):
+
+1. `parseDialogue(script)` splits the script into `{ speaker: "A" | "B", text }` lines by the `Host A:`/`Host B:` prefixes.
+2. `synthesizeSpeech(script, voice)` maps the user's picked `voice` to Host A, and the opposite voice to Host B — so the picker still controls the primary narrator's voice instead of always producing a fixed male/female pairing:
+
+```ts
+const voiceNameA = voice === "male" ? config.googleTts.voiceNameMale : config.googleTts.voiceNameFemale;
+const voiceNameB = voice === "male" ? config.googleTts.voiceNameFemale : config.googleTts.voiceNameMale;
+```
+
+3. Each dialogue line is synthesized separately via direct `fetch` to the Google Cloud TTS REST API, **API-key auth** (`?key=`), not a service account:
 
 ```ts
 fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`, {
@@ -50,7 +60,7 @@ fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`, {
 });
 ```
 
-Script > ~4500 chars is split on paragraph boundaries (`splitScript`), synthesized per-part, mp3 buffers concatenated (`Buffer.concat`) — Google TTS caps request text at 5,000 bytes.
+4. Any single turn over ~4500 chars is further split on paragraph boundaries (`splitScript`) — Google TTS caps request text at 5,000 bytes. All resulting mp3 buffers are concatenated in order (`Buffer.concat`).
 
 ## Shared file storage
 

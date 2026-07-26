@@ -15,6 +15,183 @@ function statusLabel(status: Podcast["status"]) {
 	return status.charAt(0) + status.slice(1).toLowerCase();
 }
 
+interface DialogueLine {
+	speaker: string;
+	text: string;
+}
+
+function parseScriptToDialogue(script: string): DialogueLine[] {
+	const lines = script.split("\n");
+	const dialogue: DialogueLine[] = [];
+	for (const line of lines) {
+		const trimmed = line.trim();
+		if (trimmed.startsWith("Host A:")) {
+			dialogue.push({ speaker: "Host A", text: trimmed.substring(7).trim() });
+		} else if (trimmed.startsWith("Host B:")) {
+			dialogue.push({ speaker: "Host B", text: trimmed.substring(7).trim() });
+		} else if (trimmed) {
+			if (dialogue.length > 0) {
+				dialogue[dialogue.length - 1].text += "\n" + trimmed;
+			} else {
+				dialogue.push({ speaker: "Host A", text: trimmed });
+			}
+		}
+	}
+	return dialogue;
+}
+
+interface CustomAudioPlayerProps {
+	src: string;
+}
+
+export function CustomAudioPlayer({ src }: CustomAudioPlayerProps) {
+	const audioRef = useRef<HTMLAudioElement | null>(null);
+	const [isPlaying, setIsPlaying] = useState(false);
+	const [currentTime, setCurrentTime] = useState(0);
+	const [duration, setDuration] = useState(0);
+	const [speed, setSpeed] = useState(1);
+	const [volume, setVolume] = useState(1);
+
+	useEffect(() => {
+		const audio = audioRef.current;
+		if (!audio) return;
+		audio.src = src;
+		audio.load();
+		setIsPlaying(false);
+		setCurrentTime(0);
+	}, [src]);
+
+	const togglePlay = () => {
+		const audio = audioRef.current;
+		if (!audio) return;
+		if (isPlaying) {
+			audio.pause();
+			setIsPlaying(false);
+		} else {
+			audio.play().catch((err) => console.error("Audio playback error:", err));
+			setIsPlaying(true);
+		}
+	};
+
+	const handleTimeUpdate = () => {
+		if (audioRef.current) {
+			setCurrentTime(audioRef.current.currentTime);
+		}
+	};
+
+	const handleLoadedMetadata = () => {
+		if (audioRef.current) {
+			setDuration(audioRef.current.duration);
+		}
+	};
+
+	const handleScrub = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const val = Number.parseFloat(e.target.value);
+		if (audioRef.current) {
+			audioRef.current.currentTime = val;
+			setCurrentTime(val);
+		}
+	};
+
+	const handleSpeedChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+		const val = Number.parseFloat(e.target.value);
+		setSpeed(val);
+		if (audioRef.current) {
+			audioRef.current.playbackRate = val;
+		}
+	};
+
+	const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const val = Number.parseFloat(e.target.value);
+		setVolume(val);
+		if (audioRef.current) {
+			audioRef.current.volume = val;
+		}
+	};
+
+	const formatTime = (time: number) => {
+		if (Number.isNaN(time)) return "0:00";
+		const mins = Math.floor(time / 60);
+		const secs = Math.floor(time % 60);
+		return `${mins}:${String(secs).padStart(2, "0")}`;
+	};
+
+	return (
+		<div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: "12px", background: "rgba(35, 37, 50, 0.75)", backdropFilter: "blur(12px)", border: "1px solid var(--color-divider)", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-md)" }}>
+			<audio
+				ref={audioRef}
+				onTimeUpdate={handleTimeUpdate}
+				onLoadedMetadata={handleLoadedMetadata}
+				onEnded={() => setIsPlaying(false)}
+			/>
+			
+			<div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+				<button
+					type="button"
+					onClick={togglePlay}
+					className="btn btn-primary btn-icon"
+					style={{ width: "40px", height: "40px", borderRadius: "50%", background: "var(--color-accent)", color: "var(--color-bg)", border: "none", boxShadow: "0 0 10px rgba(145, 132, 217, 0.4)", flexShrink: 0 }}
+					aria-label={isPlaying ? "Pause" : "Play"}
+				>
+					{isPlaying ? (
+						<svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor">
+							<path d="M216,48V208a16,16,0,0,1-16,16H160a16,16,0,0,1-16-16V48a16,16,0,0,1,16-16h40A16,16,0,0,1,216,48ZM96,32H56A16,16,0,0,0,40,48V208a16,16,0,0,0,16,16H96a16,16,0,0,0,16-16V48A16,16,0,0,0,96,32Z"/>
+						</svg>
+					) : (
+						<svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor">
+							<path d="M228.4,121.37,76.4,32.33A8,8,0,0,0,64,39.22V216.78a8,8,0,0,0,12.4,6.89l152-89a8,8,0,0,0,0-13.3Z"/>
+						</svg>
+					)}
+				</button>
+				
+				<div style={{ flex: 1, display: "flex", alignItems: "center", gap: "10px" }}>
+					<span style={{ fontSize: "12px", fontFamily: "monospace", opacity: 0.8 }}>{formatTime(currentTime)}</span>
+					<input
+						type="range"
+						min="0"
+						max={duration || 100}
+						value={currentTime}
+						onChange={handleScrub}
+						style={{ flex: 1, height: "4px", accentColor: "var(--color-accent)", background: "var(--color-neutral-800)", border: "none", borderRadius: "2px", cursor: "pointer" }}
+					/>
+					<span style={{ fontSize: "12px", fontFamily: "monospace", opacity: 0.8 }}>{formatTime(duration)}</span>
+				</div>
+			</div>
+			
+			<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(255, 255, 255, 0.05)", paddingTop: "10px", marginTop: "4px" }}>
+				<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+					<svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor" style={{ opacity: 0.7 }}>
+						<path d="M160,32a8,8,0,0,0-8,8v176a8,8,0,0,0,13.66,5.66L232,155.31V100.69L165.66,34.34A8,8,0,0,0,160,32ZM72,80H32A16,16,0,0,0,16,96v64a16,16,0,0,0,16,16H72l69.66,69.66A8,8,0,0,0,155,239.31v-222A8,8,0,0,0,141.66,11L72,80Z"/>
+					</svg>
+					<input
+						type="range"
+						min="0"
+						max="1"
+						step="0.05"
+						value={volume}
+						onChange={handleVolumeChange}
+						style={{ width: "70px", height: "4px", accentColor: "var(--color-accent)", background: "var(--color-neutral-800)", cursor: "pointer" }}
+					/>
+				</div>
+
+				<div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+					<span style={{ fontSize: "11px", opacity: 0.7 }}>Speed</span>
+					<select
+						value={speed}
+						onChange={handleSpeedChange}
+						style={{ background: "var(--color-surface)", border: "1px solid var(--color-divider)", borderRadius: "var(--radius-sm)", color: "var(--color-text)", padding: "2px 6px", fontSize: "12px", outline: "none", cursor: "pointer" }}
+					>
+						<option value="1">1.0x</option>
+						<option value="1.25">1.25x</option>
+						<option value="1.5">1.5x</option>
+						<option value="2">2.0x</option>
+					</select>
+				</div>
+			</div>
+		</div>
+	);
+}
+
 export function PodcastPanel({ token, notebookId }: PodcastPanelProps) {
 	const [view, setView] = useState<View>("LIST");
 	const [podcasts, setPodcasts] = useState<Podcast[]>([]);
@@ -174,6 +351,11 @@ export function PodcastPanel({ token, notebookId }: PodcastPanelProps) {
 						</span>
 					) : podcasts.length === 0 ? (
 						<div style={{ margin: "auto", textAlign: "center", maxWidth: "380px" }}>
+							<div style={{ width: "44px", height: "44px", margin: "0 auto 12px", borderRadius: "12px", background: "var(--color-accent-900)", color: "var(--color-accent-400)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+								<svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor">
+									<path d="M128,176a48.05,48.05,0,0,0,48-48V64a48,48,0,0,0-96,0v64A48.05,48.05,0,0,0,128,176ZM96,64a32,32,0,0,1,64,0v64a32,32,0,0,1-64,0Zm40,143.6V232a8,8,0,0,1-16,0V207.6A80.11,80.11,0,0,1,48,128a8,8,0,0,1,16,0,64,64,0,0,0,128,0,8,8,0,0,1,16,0A80.11,80.11,0,0,1,136,207.6Z" />
+								</svg>
+							</div>
 							<p className="text-muted" style={{ fontSize: "13px" }}>
 								Turn this notebook's sources into a spoken narration you can listen to, in a male or female voice.
 							</p>
@@ -181,27 +363,7 @@ export function PodcastPanel({ token, notebookId }: PodcastPanelProps) {
 					) : (
 						<div style={{ display: "flex", flexDirection: "column" }}>
 							{podcasts.map((podcast) => (
-								<button
-									key={podcast.id}
-									type="button"
-									onClick={() => openPodcast(podcast)}
-									style={{
-										display: "flex",
-										alignItems: "center",
-										gap: "10px",
-										padding: "11px 4px",
-										borderBottom: "1px solid var(--color-divider)",
-										background: "transparent",
-										border: "none",
-										borderBottomWidth: "1px",
-										borderBottomStyle: "solid",
-										borderBottomColor: "var(--color-divider)",
-										textAlign: "left",
-										cursor: "pointer",
-										color: "var(--color-text)",
-										width: "100%",
-									}}
-								>
+								<button key={podcast.id} type="button" onClick={() => openPodcast(podcast)} className="list-row">
 									<div style={{ flex: 1, minWidth: 0 }}>
 										<div style={{ fontSize: "13px", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
 											{podcast.topic} <span className="text-muted">· {podcast.voice === "male" ? "male" : "female"}</span>
@@ -313,18 +475,52 @@ export function PodcastPanel({ token, notebookId }: PodcastPanelProps) {
 					{selected.status === "FAILED" && <p className="error">{selected.errorMessage ?? "Podcast generation failed."}</p>}
 
 					{selected.status === "READY" && (
-						<div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+						<div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 							{loadingAudio ? (
 								<span className="text-muted" style={{ fontSize: "13px" }}>
 									Loading audio…
 								</span>
 							) : audioUrl ? (
-								// biome-ignore lint: needs controls for playback
-								<audio controls src={audioUrl} style={{ width: "100%" }} />
+								<CustomAudioPlayer src={audioUrl} />
 							) : null}
+							
 							{selected.script && (
-								<div className="card elev-sm" style={{ padding: "16px 18px", fontSize: "13px", lineHeight: "1.7", whiteSpace: "pre-wrap" }}>
-									{selected.script}
+								<div style={{ display: "flex", flexDirection: "column", gap: "14px", marginTop: "8px" }}>
+									{parseScriptToDialogue(selected.script).map((line, idx) => {
+										const isHostA = line.speaker === "Host A";
+										return (
+											<div
+												key={idx}
+												style={{
+													display: "flex",
+													flexDirection: "column",
+													alignSelf: isHostA ? "flex-start" : "flex-end",
+													maxWidth: "85%",
+													alignItems: isHostA ? "flex-start" : "flex-end",
+												}}
+											>
+												<span style={{ fontSize: "10px", fontWeight: 600, color: isHostA ? "var(--color-accent)" : "var(--color-accent-2)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+													{line.speaker}
+												</span>
+												<div
+													style={{
+														padding: "10px 14px",
+														borderRadius: "14px",
+														borderTopLeftRadius: isHostA ? "2px" : "14px",
+														borderTopRightRadius: isHostA ? "14px" : "2px",
+														background: isHostA ? "var(--color-surface)" : "var(--color-accent-900)",
+														border: "1px solid var(--color-divider)",
+														fontSize: "13px",
+														lineHeight: "1.55",
+														color: "var(--color-text)",
+														boxShadow: "var(--shadow-sm)"
+													}}
+												>
+													{line.text}
+												</div>
+											</div>
+										);
+									})}
 								</div>
 							)}
 						</div>

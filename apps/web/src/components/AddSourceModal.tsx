@@ -155,6 +155,7 @@ export function AddSourceModal({
 							{/* PDF Tile */}
 							<button
 								type="button"
+								className="source-tile"
 								style={{
 									display: "flex",
 									flexDirection: "column",
@@ -162,8 +163,6 @@ export function AddSourceModal({
 									gap: "6px",
 									padding: "14px",
 									borderRadius: "10px",
-									border: "1px solid var(--color-divider)",
-									background: "var(--color-surface)",
 									color: "var(--color-text)",
 									cursor: "pointer",
 									textAlign: "left",
@@ -171,7 +170,7 @@ export function AddSourceModal({
 								}}
 								onClick={() => setActiveTab("PDF")}
 							>
-								<span style={{ width: "30px", height: "30px", borderRadius: "7px", background: "var(--color-neutral-800)", color: "var(--color-neutral-200)", display: "flex", alignItems: "center", justifyCenter: "center", justifyContent: "center", fontSize: "9px", fontWeight: 700, letterSpacing: ".02em" }}>
+								<span style={{ width: "30px", height: "30px", borderRadius: "7px", background: "var(--color-neutral-800)", color: "var(--color-neutral-200)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "9px", fontWeight: 700, letterSpacing: ".02em" }}>
 									PDF
 								</span>
 								<span style={{ fontSize: "13px", fontWeight: 500, marginTop: "4px" }}>Upload PDF</span>
@@ -180,6 +179,7 @@ export function AddSourceModal({
 							{/* Text Tile */}
 							<button
 								type="button"
+								className="source-tile"
 								style={{
 									display: "flex",
 									flexDirection: "column",
@@ -187,8 +187,6 @@ export function AddSourceModal({
 									gap: "6px",
 									padding: "14px",
 									borderRadius: "10px",
-									border: "1px solid var(--color-divider)",
-									background: "var(--color-surface)",
 									color: "var(--color-text)",
 									cursor: "pointer",
 									textAlign: "left",
@@ -196,7 +194,7 @@ export function AddSourceModal({
 								}}
 								onClick={() => setActiveTab("TEXT")}
 							>
-								<span style={{ width: "30px", height: "30px", borderRadius: "7px", background: "var(--color-neutral-800)", color: "var(--color-neutral-200)", display: "flex", alignItems: "center", justifyCenter: "center", justifyContent: "center", fontSize: "9px", fontWeight: 700, letterSpacing: ".02em" }}>
+								<span style={{ width: "30px", height: "30px", borderRadius: "7px", background: "var(--color-neutral-800)", color: "var(--color-neutral-200)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "9px", fontWeight: 700, letterSpacing: ".02em" }}>
 									TXT
 								</span>
 								<span style={{ fontSize: "13px", fontWeight: 500, marginTop: "4px" }}>Paste text</span>
@@ -205,6 +203,7 @@ export function AddSourceModal({
 							{/* URL Tile */}
 							<button
 								type="button"
+								className="source-tile"
 								style={{
 									display: "flex",
 									flexDirection: "column",
@@ -212,8 +211,6 @@ export function AddSourceModal({
 									gap: "6px",
 									padding: "14px",
 									borderRadius: "10px",
-									border: "1px solid var(--color-divider)",
-									background: "var(--color-surface)",
 									color: "var(--color-text)",
 									cursor: "pointer",
 									textAlign: "left",
@@ -221,7 +218,7 @@ export function AddSourceModal({
 								}}
 								onClick={() => setActiveTab("URL")}
 							>
-								<span style={{ width: "30px", height: "30px", borderRadius: "7px", background: "var(--color-neutral-800)", color: "var(--color-neutral-200)", display: "flex", alignItems: "center", justifyCenter: "center", justifyContent: "center", fontSize: "9px", fontWeight: 700, letterSpacing: ".02em" }}>
+								<span style={{ width: "30px", height: "30px", borderRadius: "7px", background: "var(--color-neutral-800)", color: "var(--color-neutral-200)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "9px", fontWeight: 700, letterSpacing: ".02em" }}>
 									URL
 								</span>
 								<span style={{ fontSize: "13px", fontWeight: 500, marginTop: "4px" }}>Web page</span>
@@ -230,6 +227,7 @@ export function AddSourceModal({
 							{/* YouTube Tile */}
 							<button
 								type="button"
+								className="source-tile"
 								style={{
 									display: "flex",
 									flexDirection: "column",
@@ -237,8 +235,6 @@ export function AddSourceModal({
 									gap: "6px",
 									padding: "14px",
 									borderRadius: "10px",
-									border: "1px solid var(--color-divider)",
-									background: "var(--color-surface)",
 									color: "var(--color-text)",
 									cursor: "pointer",
 									textAlign: "left",
@@ -246,7 +242,7 @@ export function AddSourceModal({
 								}}
 								onClick={() => setActiveTab("YOUTUBE")}
 							>
-								<span style={{ width: "30px", height: "30px", borderRadius: "7px", background: "var(--color-neutral-800)", color: "var(--color-neutral-200)", display: "flex", alignItems: "center", justifyCenter: "center", justifyContent: "center", fontSize: "9px", fontWeight: 700, letterSpacing: ".02em" }}>
+								<span style={{ width: "30px", height: "30px", borderRadius: "7px", background: "var(--color-neutral-800)", color: "var(--color-neutral-200)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "9px", fontWeight: 700, letterSpacing: ".02em" }}>
 									YT
 								</span>
 								<span style={{ fontSize: "13px", fontWeight: 500, marginTop: "4px" }}>YouTube link</span>
@@ -255,6 +251,7 @@ export function AddSourceModal({
 							{/* YouTube Playlist Tile */}
 							<button
 								type="button"
+								className="source-tile"
 								style={{
 									display: "flex",
 									flexDirection: "column",
@@ -262,8 +259,6 @@ export function AddSourceModal({
 									gap: "6px",
 									padding: "14px",
 									borderRadius: "10px",
-									border: "1px solid var(--color-divider)",
-									background: "var(--color-surface)",
 									color: "var(--color-text)",
 									cursor: "pointer",
 									textAlign: "left",
@@ -280,6 +275,7 @@ export function AddSourceModal({
 							{/* VTT Tile */}
 							<button
 								type="button"
+								className="source-tile"
 								style={{
 									display: "flex",
 									flexDirection: "column",
@@ -287,8 +283,6 @@ export function AddSourceModal({
 									gap: "6px",
 									padding: "14px",
 									borderRadius: "10px",
-									border: "1px solid var(--color-divider)",
-									background: "var(--color-surface)",
 									color: "var(--color-text)",
 									cursor: "pointer",
 									textAlign: "left",
@@ -296,7 +290,7 @@ export function AddSourceModal({
 								}}
 								onClick={() => setActiveTab("VTT")}
 							>
-								<span style={{ width: "30px", height: "30px", borderRadius: "7px", background: "var(--color-neutral-800)", color: "var(--color-neutral-200)", display: "flex", alignItems: "center", justifyCenter: "center", justifyContent: "center", fontSize: "9px", fontWeight: 700, letterSpacing: ".02em" }}>
+								<span style={{ width: "30px", height: "30px", borderRadius: "7px", background: "var(--color-neutral-800)", color: "var(--color-neutral-200)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "9px", fontWeight: 700, letterSpacing: ".02em" }}>
 									VTT
 								</span>
 								<span style={{ fontSize: "13px", fontWeight: 500, marginTop: "4px" }}>Transcript (.vtt/.srt, or a .zip of many)</span>

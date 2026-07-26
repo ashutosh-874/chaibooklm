@@ -49,20 +49,55 @@ async function synthesizePart(text: string, voiceName: string): Promise<Buffer> 
 	return Buffer.from(data.audioContent, "base64");
 }
 
-// Synthesizes a full narration script into a single mp3 buffer. Splits long
-// scripts across multiple Google TTS requests (see splitScript) and
-// concatenates the resulting mp3 bytes — sequential mp3 frames concatenate
-// cleanly enough for spoken narration, no re-encoding needed for v1.
+interface DialogueLine {
+	speaker: "A" | "B";
+	text: string;
+}
+
+export function parseDialogue(script: string): DialogueLine[] {
+	const lines = script.split("\n");
+	const dialogue: DialogueLine[] = [];
+	for (const line of lines) {
+		const trimmed = line.trim();
+		if (trimmed.startsWith("Host A:")) {
+			dialogue.push({ speaker: "A", text: trimmed.substring(7).trim() });
+		} else if (trimmed.startsWith("Host B:")) {
+			dialogue.push({ speaker: "B", text: trimmed.substring(7).trim() });
+		} else if (trimmed) {
+			// If it doesn't have a tag but there's text, append it to the last line or default to Host A
+			if (dialogue.length > 0) {
+				dialogue[dialogue.length - 1].text += " " + trimmed;
+			} else {
+				dialogue.push({ speaker: "A", text: trimmed });
+			}
+		}
+	}
+	return dialogue;
+}
+
+// Synthesizes a full narration script into a single mp3 buffer. Supports
+// dual-host dialogue via Google Cloud TTS — Host A always speaks in the voice
+// the user picked (the one shown as "selected" in PodcastPanel), Host B gets
+// the other voice, so the picker still controls the primary narrator instead
+// of being silently ignored.
 export async function synthesizeSpeech(script: string, voice: "male" | "female"): Promise<Buffer> {
 	if (!config.googleTts.apiKey) {
 		throw new Error("Podcast generation isn't configured (missing GOOGLE_TTS_API_KEY)");
 	}
 
-	const voiceName = voice === "male" ? config.googleTts.voiceNameMale : config.googleTts.voiceNameFemale;
-	const parts = splitScript(script);
+	const voiceNameA = voice === "male" ? config.googleTts.voiceNameMale : config.googleTts.voiceNameFemale;
+	const voiceNameB = voice === "male" ? config.googleTts.voiceNameFemale : config.googleTts.voiceNameMale;
+
+	const dialogue = parseDialogue(script);
 	const buffers: Buffer[] = [];
-	for (const part of parts) {
-		buffers.push(await synthesizePart(part, voiceName));
+
+	for (const line of dialogue) {
+		const voiceName = line.speaker === "A" ? voiceNameA : voiceNameB;
+		// Guard against an unusually long single turn exceeding Google TTS's per-request limit.
+		for (const part of splitScript(line.text)) {
+			buffers.push(await synthesizePart(part, voiceName));
+		}
 	}
+
 	return Buffer.concat(buffers);
 }

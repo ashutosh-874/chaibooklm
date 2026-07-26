@@ -31,6 +31,7 @@ export function RoadmapPanel({ token, notebookId, onViewCitation }: RoadmapPanel
 	const [loadingTopics, setLoadingTopics] = useState(false);
 	const [customTopic, setCustomTopic] = useState("");
 	const [generating, setGenerating] = useState(false);
+	const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
 
 	const refreshList = useCallback(async () => {
 		try {
@@ -147,6 +148,11 @@ export function RoadmapPanel({ token, notebookId, onViewCitation }: RoadmapPanel
 						</span>
 					) : roadmaps.length === 0 ? (
 						<div style={{ margin: "auto", textAlign: "center", maxWidth: "380px" }}>
+							<div style={{ width: "44px", height: "44px", margin: "0 auto 12px", borderRadius: "12px", background: "var(--color-accent-900)", color: "var(--color-accent-400)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+								<svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor">
+									<path d="M222.14,58.87A8,8,0,0,0,214,52H180a75.94,75.94,0,0,0-52,20.61V44a8,8,0,0,0-16,0V72.61A75.94,75.94,0,0,0,60,52H26a8,8,0,0,0-8.14,8.87A94.86,94.86,0,0,0,64,133.51V232a8,8,0,0,0,16,0V133.51A94.86,94.86,0,0,0,222.14,58.87Z" />
+								</svg>
+							</div>
 							<p className="text-muted" style={{ fontSize: "13px" }}>
 								Generate a personalized, ordered list of concepts covered across this notebook's sources, each linked to where it's first covered.
 							</p>
@@ -154,27 +160,7 @@ export function RoadmapPanel({ token, notebookId, onViewCitation }: RoadmapPanel
 					) : (
 						<div style={{ display: "flex", flexDirection: "column" }}>
 							{roadmaps.map((roadmap) => (
-								<button
-									key={roadmap.id}
-									type="button"
-									onClick={() => openRoadmap(roadmap)}
-									style={{
-										display: "flex",
-										alignItems: "center",
-										gap: "10px",
-										padding: "11px 4px",
-										borderBottom: "1px solid var(--color-divider)",
-										background: "transparent",
-										border: "none",
-										borderBottomWidth: "1px",
-										borderBottomStyle: "solid",
-										borderBottomColor: "var(--color-divider)",
-										textAlign: "left",
-										cursor: "pointer",
-										color: "var(--color-text)",
-										width: "100%",
-									}}
-								>
+								<button key={roadmap.id} type="button" onClick={() => openRoadmap(roadmap)} className="list-row">
 									<div style={{ flex: 1, minWidth: 0 }}>
 										<div style={{ fontSize: "13px", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
 											{roadmap.topic}
@@ -289,33 +275,109 @@ export function RoadmapPanel({ token, notebookId, onViewCitation }: RoadmapPanel
 					)}
 
 					{selected.status === "READY" && selected.concepts && (
-						<div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-							{selected.concepts.map((concept, i) => (
-								<div key={`${concept.title}-${i}`} className="card elev-sm" style={{ padding: "16px 18px" }}>
-									<div style={{ display: "flex", gap: "10px", alignItems: "baseline" }}>
-										<span className="tag tag-outline" style={{ flexShrink: 0 }}>
-											{concept.orderRank}
-										</span>
-										<h4 style={{ margin: 0, fontSize: "14px" }}>{concept.title}</h4>
-									</div>
-									<p style={{ fontSize: "13px", lineHeight: "1.6", marginTop: "8px" }}>{concept.summary}</p>
-									{concept.citations.length > 0 && (
-										<div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "10px" }}>
-											{concept.citations.map((c, j) => (
-												<button
-													key={`${c.chunkId}-${j}`}
-													type="button"
-													className="tag tag-neutral"
-													style={{ cursor: "pointer", border: "none" }}
-													onClick={() => onViewCitation({ ...c, n: j + 1 })}
-												>
-													{c.sourceTitle} · {citationLabel({ ...c, n: j + 1 })}
-												</button>
-											))}
+						<div className="animate-fade-in" style={{ position: "relative", paddingLeft: "32px", display: "flex", flexDirection: "column", gap: "24px" }}>
+							{/* Vertical Timeline Track Line */}
+							<div
+								style={{
+									position: "absolute",
+									left: "13px",
+									top: "14px",
+									bottom: "14px",
+									width: "2px",
+									background: "linear-gradient(180deg, var(--color-accent) 0%, var(--color-accent-900) 100%)",
+									opacity: 0.6,
+								}}
+							/>
+
+							{selected.concepts.map((concept, i) => {
+								const stepKey = `${selected.id}-${concept.orderRank}-${i}`;
+								const isCompleted = completedSteps.has(stepKey);
+								
+								return (
+									<div key={`${concept.title}-${i}`} style={{ position: "relative" }}>
+										{/* Circular Timeline Step Badge */}
+										<button
+											type="button"
+											onClick={() => {
+												setCompletedSteps((prev) => {
+													const next = new Set(prev);
+													if (next.has(stepKey)) {
+														next.delete(stepKey);
+													} else {
+														next.add(stepKey);
+													}
+													return next;
+												});
+											}}
+											style={{
+												position: "absolute",
+												left: "-32px",
+												top: "2px",
+												width: "28px",
+												height: "28px",
+												borderRadius: "50%",
+												background: isCompleted ? "var(--color-success-bg)" : "var(--color-bg)",
+												border: isCompleted ? "2px solid var(--color-success-text)" : "2px solid var(--color-accent)",
+												color: isCompleted ? "var(--color-success-text)" : "var(--color-accent)",
+												display: "flex",
+												alignItems: "center",
+												justifyContent: "center",
+												fontSize: "11px",
+												fontWeight: 700,
+												boxShadow: isCompleted ? "0 0 10px rgba(74, 222, 128, 0.4)" : "0 0 8px rgba(145, 132, 217, 0.3)",
+												cursor: "pointer",
+												padding: 0,
+											}}
+											title={isCompleted ? "Mark Incomplete" : "Mark Complete"}
+										>
+											{isCompleted ? (
+												<svg width="12" height="12" viewBox="0 0 256 256" fill="currentColor">
+													<path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/>
+												</svg>
+											) : (
+												concept.orderRank
+											)}
+										</button>
+
+										{/* Concept Card */}
+										<div
+											className="card elev-sm"
+											style={{
+												padding: "16px 18px",
+												transition: "all 0.2s ease",
+												opacity: isCompleted ? 0.6 : 1,
+												borderLeft: isCompleted ? "3px solid var(--color-success-text)" : "1px solid var(--color-divider)",
+												background: "rgba(35, 37, 50, 0.75)",
+												backdropFilter: "blur(12px)",
+												borderRadius: "var(--radius-md)"
+											}}
+										>
+											<div style={{ display: "flex", gap: "10px", alignItems: "baseline" }}>
+												<h4 style={{ margin: 0, fontSize: "14px", textDecoration: isCompleted ? "line-through" : "none" }}>
+													{concept.title}
+												</h4>
+											</div>
+											<p style={{ fontSize: "13px", lineHeight: "1.6", marginTop: "8px" }}>{concept.summary}</p>
+											
+											{concept.citations.length > 0 && (
+												<div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "10px" }}>
+													{concept.citations.map((c, j) => (
+														<button
+															key={`${c.chunkId}-${j}`}
+															type="button"
+															className="tag tag-neutral"
+															style={{ cursor: "pointer", border: "none" }}
+															onClick={() => onViewCitation({ ...c, n: j + 1 })}
+														>
+															{c.sourceTitle} · {citationLabel({ ...c, n: j + 1 })}
+														</button>
+													))}
+												</div>
+											)}
 										</div>
-									)}
-								</div>
-							))}
+									</div>
+								);
+							})}
 						</div>
 					)}
 				</>

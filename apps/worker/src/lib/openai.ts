@@ -247,17 +247,18 @@ export async function generatePodcastScript(sources: PodcastSourceInput[], topic
 
 	const completion = await openai.chat.completions.create({
 		model: config.openai.chatModel,
-		temperature: 0.4,
+		temperature: 0.5,
 		messages: [
 			{
 				role: "system",
 				content:
-					`You are a podcast host writing a solo narration script about the topic: "${topic}". Given excerpts from a ` +
-					"set of sources (already filtered for relevance to this topic), write a natural, spoken-style script (not " +
-					"bullet points, not markdown) that explains this topic by summarizing and connecting the key ideas across " +
-					"the excerpts, in a conversational tone suitable for text-to-speech narration. Aim for roughly 700-1000 words " +
-					"(a few minutes of spoken audio). Do not include stage directions, sound effect cues, or headings — just the " +
-					"words to be spoken aloud.",
+					`You are writing a podcast dialogue script between two hosts (Host A and Host B) discussing the topic: "${topic}". ` +
+					"Given excerpts from a set of sources (already filtered for relevance to this topic), write a natural, highly engaging " +
+					"conversation where Host A is the main deep-dive narrator/expert and Host B asks inquisitive, clarifying questions, " +
+					"providing helpful analogies and summaries. " +
+					"The script MUST be formatted exactly as sequential dialogue lines starting with either 'Host A: ' or 'Host B: '. " +
+					"Example:\nHost A: Hello and welcome...\nHost B: Hey there! Glad to be here...\nHost A: Today we are...\n" +
+					"Do not include stage directions, bracketed actions, or sound effect cues. Aim for 700-1000 words.",
 			},
 			{ role: "user", content: context },
 		],

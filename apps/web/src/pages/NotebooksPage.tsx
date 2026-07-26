@@ -118,7 +118,7 @@ export function NotebooksPage() {
 
 			{/* Content Area */}
 			<div style={{ maxWidth: "1120px", width: "100%", margin: "0 auto", padding: "36px 32px 64px" }}>
-				<div style={{ display: "flex", alignItems: "center", justifySpaceBetween: "space-between", justifyContent: "space-between", gap: "16px", flexWrap: "wrap", marginBottom: "28px" }}>
+				<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", flexWrap: "wrap", marginBottom: "28px" }}>
 					<div>
 						<h2 style={{ marginBottom: "4px" }}>Your notebooks</h2>
 						<p className="text-muted" style={{ fontSize: "13px", margin: 0 }}>
@@ -172,8 +172,8 @@ export function NotebooksPage() {
 							return (
 								<div
 									key={notebook.id}
-									className="card elev-sm"
-									style={{ cursor: "pointer", position: "relative" }}
+									className="card elev-sm card-clickable"
+									style={{ position: "relative" }}
 									onClick={() => navigate(`/notebooks/${notebook.id}`)}
 								>
 									<div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "8px" }}>

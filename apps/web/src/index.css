@@ -206,7 +206,10 @@ textarea.input { min-height: 90px; resize: vertical; }
 /* — cards — */
 .card {
   display: flex; flex-direction: column; gap: var(--space-2);
-  padding: var(--space-3); border-radius: var(--radius-md); background: var(--color-surface);
+  padding: var(--space-3); border-radius: var(--radius-md);
+  background: rgba(35, 37, 50, 0.75);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--color-divider);
 }
 .card-kicker { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-accent); }
 .card-title {
@@ -221,6 +224,51 @@ textarea.input { min-height: 90px; resize: vertical; }
 .elev-sm { box-shadow: var(--shadow-sm); }
 .elev-md { box-shadow: var(--shadow-md); }
 .elev-lg { box-shadow: var(--shadow-lg); }
+
+/* Clickable card — cards/tiles that act as a button (notebook grid, flashcard
+   tiles): lift + border tint on hover so the whole surface reads as tappable. */
+.card-clickable {
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+  border: 1px solid transparent;
+}
+.card-clickable:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
+}
+.card-clickable:active { transform: translateY(0); }
+
+/* List row — history-list buttons (roadmap/podcast/flashcard sets, sources):
+   a plain-looking row that still gives hover feedback it's clickable. */
+.list-row {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 11px 8px; margin: 0 -8px;
+  border: none; border-radius: var(--radius-md);
+  border-bottom: 1px solid var(--color-divider);
+  background: transparent; color: var(--color-text);
+  text-align: left; cursor: pointer;
+  transition: background 120ms ease;
+}
+.list-row:hover { background: color-mix(in srgb, var(--color-text) 5%, transparent); }
+.list-row:last-child { border-bottom: none; }
+
+/* Add-source picker tiles */
+.source-tile {
+  border: 1px solid var(--color-divider);
+  background: var(--color-surface);
+  transition: border-color 120ms ease, background 120ms ease, transform 120ms ease;
+}
+.source-tile:hover {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface));
+  transform: translateY(-1px);
+}
+
+/* Tab bar buttons — background/opacity live here (not inline) so :hover can
+   actually override them; inline styles handle the active/inactive state. */
+.tab-btn { background: transparent; }
+.tab-btn:hover { background: color-mix(in srgb, var(--color-text) 6%, transparent); opacity: 1; }
 
 /* — tags — */
 .tag {
@@ -345,4 +393,20 @@ textarea.input { min-height: 90px; resize: vertical; }
 .source-error {
   font-size: 11px;
   margin-top: 3px;
+}
+
+/* Animations & Transitions */
+@keyframes cbFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: cbFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Translucent overlays */
+.glass-panel {
+  background: rgba(35, 37, 50, 0.7) !important;
+  backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
 }

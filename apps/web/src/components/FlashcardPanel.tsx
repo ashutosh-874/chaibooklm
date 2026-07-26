@@ -203,27 +203,7 @@ export function FlashcardPanel({ token, notebookId, onViewCitation }: FlashcardP
 					) : (
 						<div style={{ display: "flex", flexDirection: "column" }}>
 							{sets.map((set) => (
-								<button
-									key={set.id}
-									type="button"
-									onClick={() => openSet(set)}
-									style={{
-										display: "flex",
-										alignItems: "center",
-										gap: "10px",
-										padding: "11px 4px",
-										borderBottom: "1px solid var(--color-divider)",
-										background: "transparent",
-										border: "none",
-										borderBottomWidth: "1px",
-										borderBottomStyle: "solid",
-										borderBottomColor: "var(--color-divider)",
-										textAlign: "left",
-										cursor: "pointer",
-										color: "var(--color-text)",
-										width: "100%",
-									}}
-								>
+								<button key={set.id} type="button" onClick={() => openSet(set)} className="list-row">
 									<div style={{ flex: 1, minWidth: 0 }}>
 										<div style={{ fontSize: "13px", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
 											{set.topic}
@@ -345,7 +325,7 @@ export function FlashcardPanel({ token, notebookId, onViewCitation }: FlashcardP
 											key={`${card.front}-${i}`}
 											type="button"
 											onClick={() => toggleFlip(i)}
-											className="card elev-sm"
+											className="card elev-sm card-clickable"
 											style={{
 												padding: "16px 18px",
 												textAlign: "left",
@@ -354,7 +334,6 @@ export function FlashcardPanel({ token, notebookId, onViewCitation }: FlashcardP
 												width: "100%",
 												minHeight: "132px",
 												justifyContent: "space-between",
-												transition: "border-color 120ms ease",
 												color: "var(--color-text)",
 												font: "inherit",
 											}}
