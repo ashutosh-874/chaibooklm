@@ -3,6 +3,7 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.tsx";
 import { SourceViewer } from "../components/SourceViewer.tsx";
 import { AddSourceModal } from "../components/AddSourceModal.tsx";
+import { FlashcardPanel } from "../components/FlashcardPanel.tsx";
 import { PodcastPanel } from "../components/PodcastPanel.tsx";
 import { RoadmapPanel } from "../components/RoadmapPanel.tsx";
 import { Tabs } from "../components/Tabs.tsx";
@@ -45,7 +46,7 @@ export function NotebookDetailPage() {
 	const [viewingCitation, setViewingCitation] = useState<Citation | null>(null);
 	
 	const [isAddSourceOpen, setIsAddSourceOpen] = useState(false);
-	const [rightTab, setRightTab] = useState<"CHAT" | "ROADMAP" | "PODCAST">("CHAT");
+	const [rightTab, setRightTab] = useState<"CHAT" | "ROADMAP" | "PODCAST" | "FLASHCARDS">("CHAT");
 
 	const [playlistUrl, setPlaylistUrl] = useState("");
 	const [submittingPlaylist, setSubmittingPlaylist] = useState(false);
@@ -354,6 +355,7 @@ export function NotebookDetailPage() {
 							{ value: "CHAT", label: "Chat" },
 							{ value: "ROADMAP", label: "Roadmap" },
 							{ value: "PODCAST", label: "Podcast" },
+							{ value: "FLASHCARDS", label: "Flashcards" },
 						]}
 						active={rightTab}
 						onChange={setRightTab}
@@ -365,6 +367,10 @@ export function NotebookDetailPage() {
 
 					{rightTab === "PODCAST" && token && id && (
 						<PodcastPanel token={token} notebookId={id} />
+					)}
+
+					{rightTab === "FLASHCARDS" && token && id && (
+						<FlashcardPanel token={token} notebookId={id} onViewCitation={setViewingCitation} />
 					)}
 
 					{rightTab === "CHAT" && (

@@ -145,6 +145,95 @@ export async function generateRoadmapConcepts(chunks: RoadmapChunkInput[], topic
 	return Array.isArray(parsed.concepts) ? parsed.concepts : [];
 }
 
+export interface FlashcardCitation {
+	sourceId: string;
+	chunkId: string;
+	timestampSec: number | null;
+}
+
+export interface Flashcard {
+	front: string;
+	back: string;
+	citation: FlashcardCitation;
+}
+
+// Structured chat completion producing a small set of Q&A-style flashcards for
+// a topic — same response_format/json_schema pattern and RoadmapChunkInput
+// shape as generateRoadmapConcepts, just a flatter output (one citation per
+// card instead of a citations array) since each card tests one fact.
+export async function generateFlashcards(chunks: RoadmapChunkInput[], topic: string): Promise<Flashcard[]> {
+	const bySource = new Map<string, RoadmapChunkInput[]>();
+	for (const chunk of chunks) {
+		const list = bySource.get(chunk.sourceId) ?? [];
+		list.push(chunk);
+		bySource.set(chunk.sourceId, list);
+	}
+
+	const context = [...bySource.entries()]
+		.map(([sourceId, items]) => {
+			const title = items[0]?.sourceTitle ?? sourceId;
+			const body = items.map((c) => `  [chunkId=${c.chunkId} timestampSec=${c.timestampSec ?? "null"}] ${c.text}`).join("\n");
+			return `Source ${sourceId} ("${title}"):\n${body}`;
+		})
+		.join("\n\n");
+
+	const completion = await openai.chat.completions.create({
+		model: config.openai.chatModel,
+		temperature: 0.3,
+		response_format: {
+			type: "json_schema",
+			json_schema: {
+				name: "flashcards",
+				strict: true,
+				schema: {
+					type: "object",
+					additionalProperties: false,
+					properties: {
+						flashcards: {
+							type: "array",
+							description: "6-10 concise question/answer flashcards a learner could use to study this topic.",
+							items: {
+								type: "object",
+								additionalProperties: false,
+								properties: {
+									front: { type: "string", description: "A short question or prompt." },
+									back: { type: "string", description: "The concise answer, 1-2 sentences." },
+									sourceId: { type: "string" },
+									chunkId: { type: "string", description: "MUST reuse a chunkId exactly as given in the context — never invent one." },
+									timestampSec: { type: ["number", "null"] },
+								},
+								required: ["front", "back", "sourceId", "chunkId", "timestampSec"],
+							},
+						},
+					},
+					required: ["flashcards"],
+				},
+			},
+		},
+		messages: [
+			{
+				role: "system",
+				content:
+					`You are a study-flashcard writer. The learner wants flashcards for the topic: "${topic}". Given excerpts ` +
+					"from a set of sources (already filtered for relevance to this topic), write 6-10 flashcards, each testing one " +
+					"specific fact or concept from the excerpts. Keep the front short (a question or prompt) and the back concise " +
+					"(1-2 sentences). For each card, cite the chunk it's drawn from, reusing the exact sourceId/chunkId/timestampSec " +
+					"values given in the context. Respond ONLY with the structured JSON.",
+			},
+			{ role: "user", content: context },
+		],
+	});
+
+	const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}");
+	if (!Array.isArray(parsed.flashcards)) return [];
+
+	return parsed.flashcards.map((c: { front: string; back: string; sourceId: string; chunkId: string; timestampSec: number | null }) => ({
+		front: c.front,
+		back: c.back,
+		citation: { sourceId: c.sourceId, chunkId: c.chunkId, timestampSec: c.timestampSec },
+	}));
+}
+
 interface PodcastSourceInput {
 	title: string;
 	excerpt: string;

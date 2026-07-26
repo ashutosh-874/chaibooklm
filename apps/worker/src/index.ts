@@ -1,13 +1,16 @@
 import {
+	FLASHCARD_QUEUE_NAME,
 	INGEST_QUEUE_NAME,
 	PODCAST_QUEUE_NAME,
 	ROADMAP_QUEUE_NAME,
+	type FlashcardJobData,
 	type IngestJobData,
 	type PodcastJobData,
 	type RoadmapJobData,
 } from "@chaibooklm/shared";
 import { Worker } from "bullmq";
 import { config } from "./config.ts";
+import { generateFlashcards } from "./jobs/generateFlashcards.ts";
 import { generatePodcast } from "./jobs/generatePodcast.ts";
 import { generateRoadmap } from "./jobs/generateRoadmap.ts";
 import { ingestSource } from "./jobs/ingestSource.ts";
@@ -54,4 +57,16 @@ const podcastWorker = new Worker<PodcastJobData>(
 podcastWorker.on("completed", (job) => console.log(`✅ job ${job.id} completed`));
 podcastWorker.on("failed", (job, err) => console.error(`❌ job ${job?.id} failed:`, err.message));
 
-console.log("👷 Worker started (ingest-source, generate-roadmap, generate-podcast). Waiting for jobs...");
+const flashcardWorker = new Worker<FlashcardJobData>(
+	FLASHCARD_QUEUE_NAME,
+	async (job) => {
+		console.log(`🗂️  Flashcard job ${job.id}: set ${job.data.flashcardSetId}`);
+		await generateFlashcards(job.data.flashcardSetId);
+	},
+	{ connection, concurrency: 2 },
+);
+
+flashcardWorker.on("completed", (job) => console.log(`✅ job ${job.id} completed`));
+flashcardWorker.on("failed", (job, err) => console.error(`❌ job ${job?.id} failed:`, err.message));
+
+console.log("👷 Worker started (ingest-source, generate-roadmap, generate-podcast, generate-flashcards). Waiting for jobs...");

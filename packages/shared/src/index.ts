@@ -49,6 +49,15 @@ export interface PodcastJobData {
 	podcastId: string;
 }
 
+// BullMQ queue name for flashcard generation, shared by the server (enqueue) and worker (consume).
+// Quiz generation has no queue of its own — it's fast enough to run synchronously
+// in the server route once flashcards already exist (see apps/server/src/lib/quiz.ts).
+export const FLASHCARD_QUEUE_NAME = "generate-flashcards";
+
+export interface FlashcardJobData {
+	flashcardSetId: string;
+}
+
 // Single shared Prisma client instance, used by both server and worker.
 export * from "./db.ts";
 

@@ -26,6 +26,7 @@ model Notebook {
   sources          Source[]
   roadmaps         Roadmap[]
   podcasts         Podcast[]
+  flashcardSets    FlashcardSet[]
 }
 
 enum SourceType {
@@ -107,4 +108,28 @@ model Podcast {
   errorMessage String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+}
+
+// Single linear status covers the whole "cards -> quiz" flow the user
+// requested: suggested topics -> flashcards -> quiz from those flashcards.
+enum FlashcardStatus {
+  PENDING
+  GENERATING
+  CARDS_READY
+  GENERATING_QUIZ
+  QUIZ_READY
+  FAILED
+}
+
+model FlashcardSet {
+  id           String          @id @default(cuid())
+  notebookId   String // a notebook can have many flashcard sets — kept and listed, not overwritten
+  notebook     Notebook        @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+  status       FlashcardStatus @default(PENDING)
+  topic        String? // the concept/topic the user picked to scope generation to
+  errorMessage String?
+  flashcards   Json? // [{ front, back, sourceId, chunkId, sourceTitle, sourceType, locator, timestampSec }]
+  quiz         Json? // [{ question, options: string[4], correctIndex, explanation }] — generated from `flashcards`, not raw sources
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
 }

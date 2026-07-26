@@ -116,6 +116,44 @@ export interface Podcast {
 	updatedAt: string;
 }
 
+export type FlashcardStatus = "PENDING" | "GENERATING" | "CARDS_READY" | "GENERATING_QUIZ" | "QUIZ_READY" | "FAILED" | null;
+
+// Same shape as RoadmapConceptCitation — the flashcard job denormalizes this
+// at generation time so the existing SourceViewer can open a card's citation
+// with no extra fetch. `null` when the model's citation couldn't be resolved
+// to a real chunk (dropped defensively rather than the whole card).
+export interface Flashcard {
+	front: string;
+	back: string;
+	citation: {
+		chunkId: string;
+		sourceId: string;
+		sourceTitle: string;
+		sourceType: SourceType;
+		locator: Locator;
+		text: string;
+	} | null;
+}
+
+export interface QuizQuestion {
+	question: string;
+	options: string[];
+	correctIndex: number;
+	explanation: string;
+}
+
+export interface FlashcardSet {
+	id: string;
+	notebookId: string;
+	status: FlashcardStatus;
+	topic: string | null;
+	errorMessage?: string | null;
+	flashcards: Flashcard[] | null;
+	quiz: QuizQuestion[] | null;
+	createdAt: string;
+	updatedAt: string;
+}
+
 export const api = {
 	signup: (email: string, password: string) =>
 		request<{ token: string; user: User }>("/auth/signup", {
@@ -225,4 +263,17 @@ export const api = {
 		if (!res.ok) throw new ApiError(res.status, `Failed to load podcast audio (${res.status})`);
 		return res.arrayBuffer();
 	},
+
+	listFlashcardSets: (token: string, notebookId: string) =>
+		request<FlashcardSet[]>(`/notebooks/${notebookId}/flashcards`, {}, token),
+	getFlashcardSet: (token: string, notebookId: string, setId: string) =>
+		request<FlashcardSet>(`/notebooks/${notebookId}/flashcards/${setId}`, {}, token),
+	getFlashcardTopics: (token: string, notebookId: string) =>
+		request<{ topics: string[] }>(`/notebooks/${notebookId}/flashcards/topics`, {}, token),
+	generateFlashcards: (token: string, notebookId: string, topic: string) =>
+		request<FlashcardSet>(`/notebooks/${notebookId}/flashcards`, { method: "POST", body: JSON.stringify({ topic }) }, token),
+	generateQuiz: (token: string, notebookId: string, setId: string) =>
+		request<FlashcardSet>(`/notebooks/${notebookId}/flashcards/${setId}/quiz`, { method: "POST" }, token),
+	deleteFlashcardSet: (token: string, notebookId: string, setId: string) =>
+		request<void>(`/notebooks/${notebookId}/flashcards/${setId}`, { method: "DELETE" }, token),
 };

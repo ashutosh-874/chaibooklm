@@ -1,7 +1,9 @@
 import {
+	FLASHCARD_QUEUE_NAME,
 	INGEST_QUEUE_NAME,
 	PODCAST_QUEUE_NAME,
 	ROADMAP_QUEUE_NAME,
+	type FlashcardJobData,
 	type IngestJobData,
 	type PodcastJobData,
 	type RoadmapJobData,
@@ -19,6 +21,7 @@ const connection = {
 const ingestQueue = new Queue<IngestJobData>(INGEST_QUEUE_NAME, { connection });
 const roadmapQueue = new Queue<RoadmapJobData>(ROADMAP_QUEUE_NAME, { connection });
 const podcastQueue = new Queue<PodcastJobData>(PODCAST_QUEUE_NAME, { connection });
+const flashcardQueue = new Queue<FlashcardJobData>(FLASHCARD_QUEUE_NAME, { connection });
 
 // Enqueues the job telling the worker to extract/chunk/embed one source.
 // Retries handle transient failures (OpenAI/Qdrant hiccups); the worker itself
@@ -55,6 +58,22 @@ export function enqueuePodcastJob(podcastId: string) {
 	return podcastQueue.add(
 		"podcast",
 		{ podcastId },
+		{
+			attempts: 3,
+			backoff: { type: "exponential", delay: 2000 },
+			removeOnComplete: 100,
+			removeOnFail: 500,
+		},
+	);
+}
+
+// Enqueues the job telling the worker to generate one flashcard set's cards.
+// Quiz generation for that set happens later, synchronously in a server route
+// (apps/server/src/lib/quiz.ts) — no queue needed for that step.
+export function enqueueFlashcardJob(flashcardSetId: string) {
+	return flashcardQueue.add(
+		"flashcards",
+		{ flashcardSetId },
 		{
 			attempts: 3,
 			backoff: { type: "exponential", delay: 2000 },

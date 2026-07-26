@@ -3,6 +3,7 @@ import { config } from "./config.ts";
 import cors from "cors";
 import express from "express";
 import { authRouter } from "./routes/auth.ts";
+import { flashcardsRouter } from "./routes/flashcards.ts";
 import { notebooksRouter } from "./routes/notebooks.ts";
 import { podcastRouter } from "./routes/podcast.ts";
 import { queryRouter } from "./routes/query.ts";
@@ -21,6 +22,7 @@ app.use("/notebooks/:notebookId/sources", sourcesRouter);
 app.use("/notebooks/:notebookId/query", queryRouter);
 app.use("/notebooks/:notebookId/roadmap", roadmapRouter);
 app.use("/notebooks/:notebookId/podcast", podcastRouter);
+app.use("/notebooks/:notebookId/flashcards", flashcardsRouter);
 
 // biome-ignore lint: express error middleware needs all 4 params to be recognized
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
