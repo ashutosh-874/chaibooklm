@@ -101,6 +101,21 @@ export interface Roadmap {
 	updatedAt: string;
 }
 
+export type PodcastStatus = "PENDING" | "GENERATING" | "READY" | "FAILED" | null;
+export type PodcastVoice = "male" | "female";
+
+export interface Podcast {
+	id: string;
+	notebookId: string;
+	status: PodcastStatus;
+	voice: PodcastVoice;
+	topic: string | null;
+	script: string | null;
+	errorMessage?: string | null;
+	createdAt: string;
+	updatedAt: string;
+}
+
 export const api = {
 	signup: (email: string, password: string) =>
 		request<{ token: string; user: User }>("/auth/signup", {
@@ -189,4 +204,25 @@ export const api = {
 		request<Roadmap>(`/notebooks/${notebookId}/roadmap`, { method: "POST", body: JSON.stringify({ topic }) }, token),
 	deleteRoadmap: (token: string, notebookId: string, roadmapId: string) =>
 		request<void>(`/notebooks/${notebookId}/roadmap/${roadmapId}`, { method: "DELETE" }, token),
+
+	listPodcasts: (token: string, notebookId: string) => request<Podcast[]>(`/notebooks/${notebookId}/podcast`, {}, token),
+	getPodcast: (token: string, notebookId: string, podcastId: string) =>
+		request<Podcast>(`/notebooks/${notebookId}/podcast/${podcastId}`, {}, token),
+	getPodcastTopics: (token: string, notebookId: string) =>
+		request<{ topics: string[] }>(`/notebooks/${notebookId}/podcast/topics`, {}, token),
+	generatePodcast: (token: string, notebookId: string, voice: PodcastVoice, topic: string) =>
+		request<Podcast>(`/notebooks/${notebookId}/podcast`, { method: "POST", body: JSON.stringify({ voice, topic }) }, token),
+	deletePodcast: (token: string, notebookId: string, podcastId: string) =>
+		request<void>(`/notebooks/${notebookId}/podcast/${podcastId}`, { method: "DELETE" }, token),
+
+	// Not routed through request() — this returns raw mp3 bytes, not JSON. A
+	// plain <audio src> can't send an Authorization header, so the caller fetches
+	// this as a blob and points <audio> at an object URL instead (see fetchSourceFile).
+	async fetchPodcastFile(token: string, notebookId: string, podcastId: string): Promise<ArrayBuffer> {
+		const res = await fetch(`${API_URL}/notebooks/${notebookId}/podcast/${podcastId}/file`, {
+			headers: { Authorization: `Bearer ${token}` },
+		});
+		if (!res.ok) throw new ApiError(res.status, `Failed to load podcast audio (${res.status})`);
+		return res.arrayBuffer();
+	},
 };

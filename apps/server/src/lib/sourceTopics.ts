@@ -6,9 +6,11 @@ const EXCERPT_CHARS = 300;
 
 // Cheap topic discovery: uses only source titles + a short excerpt from each
 // (not the full indexed text) so this can run synchronously on page load
-// instead of needing a queued job. The user picks one of these topics before
-// the (expensive) retrieval-scoped roadmap generation runs.
-export async function suggestRoadmapTopics(notebookId: string): Promise<string[]> {
+// instead of needing a queued job. Shared by both roadmap generation (pick a
+// topic to build a concept progression for) and podcast generation (pick a
+// topic to narrate) — the user picks one of these before the (expensive)
+// retrieval-scoped generation runs.
+export async function suggestTopics(notebookId: string): Promise<string[]> {
 	const sources = await prisma.source.findMany({
 		where: { notebookId, status: SourceStatus.READY },
 		include: { chunks: { take: 1, orderBy: { chunkIndex: "asc" } } },
@@ -29,7 +31,7 @@ export async function suggestRoadmapTopics(notebookId: string): Promise<string[]
 		response_format: {
 			type: "json_schema",
 			json_schema: {
-				name: "roadmap_topics",
+				name: "source_topics",
 				strict: true,
 				schema: {
 					type: "object",
@@ -37,7 +39,7 @@ export async function suggestRoadmapTopics(notebookId: string): Promise<string[]
 					properties: {
 						topics: {
 							type: "array",
-							description: "5-8 candidate topics a learner could build a roadmap around, based on these sources.",
+							description: "5-8 candidate topics a learner could build a roadmap around, or hear a podcast about, based on these sources.",
 							items: { type: "string" },
 						},
 					},
@@ -50,8 +52,8 @@ export async function suggestRoadmapTopics(notebookId: string): Promise<string[]
 				role: "system",
 				content:
 					"You are a curriculum designer. Given a notebook's sources (title + short excerpt each), suggest short, " +
-					"concrete topic names a learner could request a personalized learning roadmap for. Prefer topics that " +
-					"span multiple sources when possible. Respond ONLY with the structured JSON.",
+					"concrete topic names a learner could request a personalized learning roadmap or podcast narration for. " +
+					"Prefer topics that span multiple sources when possible. Respond ONLY with the structured JSON.",
 			},
 			{ role: "user", content: context },
 		],

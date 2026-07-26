@@ -144,3 +144,35 @@ export async function generateRoadmapConcepts(chunks: RoadmapChunkInput[], topic
 	const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}");
 	return Array.isArray(parsed.concepts) ? parsed.concepts : [];
 }
+
+interface PodcastSourceInput {
+	title: string;
+	excerpt: string;
+}
+
+// Plain-text generation (no structured JSON) — same style as hydeDocument in
+// apps/server/src/lib/retriever.ts, just producing a full spoken-style script
+// instead of a short hypothetical passage.
+export async function generatePodcastScript(sources: PodcastSourceInput[], topic: string): Promise<string> {
+	const context = sources.map((s) => `Source: "${s.title}"\n${s.excerpt}`).join("\n\n");
+
+	const completion = await openai.chat.completions.create({
+		model: config.openai.chatModel,
+		temperature: 0.4,
+		messages: [
+			{
+				role: "system",
+				content:
+					`You are a podcast host writing a solo narration script about the topic: "${topic}". Given excerpts from a ` +
+					"set of sources (already filtered for relevance to this topic), write a natural, spoken-style script (not " +
+					"bullet points, not markdown) that explains this topic by summarizing and connecting the key ideas across " +
+					"the excerpts, in a conversational tone suitable for text-to-speech narration. Aim for roughly 700-1000 words " +
+					"(a few minutes of spoken audio). Do not include stage directions, sound effect cues, or headings — just the " +
+					"words to be spoken aloud.",
+			},
+			{ role: "user", content: context },
+		],
+	});
+
+	return completion.choices[0]?.message?.content?.trim() ?? "";
+}

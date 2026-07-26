@@ -1,6 +1,14 @@
-import { INGEST_QUEUE_NAME, ROADMAP_QUEUE_NAME, type IngestJobData, type RoadmapJobData } from "@chaibooklm/shared";
+import {
+	INGEST_QUEUE_NAME,
+	PODCAST_QUEUE_NAME,
+	ROADMAP_QUEUE_NAME,
+	type IngestJobData,
+	type PodcastJobData,
+	type RoadmapJobData,
+} from "@chaibooklm/shared";
 import { Worker } from "bullmq";
 import { config } from "./config.ts";
+import { generatePodcast } from "./jobs/generatePodcast.ts";
 import { generateRoadmap } from "./jobs/generateRoadmap.ts";
 import { ingestSource } from "./jobs/ingestSource.ts";
 
@@ -34,4 +42,16 @@ const roadmapWorker = new Worker<RoadmapJobData>(
 roadmapWorker.on("completed", (job) => console.log(`✅ job ${job.id} completed`));
 roadmapWorker.on("failed", (job, err) => console.error(`❌ job ${job?.id} failed:`, err.message));
 
-console.log("👷 Worker started (ingest-source, generate-roadmap). Waiting for jobs...");
+const podcastWorker = new Worker<PodcastJobData>(
+	PODCAST_QUEUE_NAME,
+	async (job) => {
+		console.log(`🎙️  Podcast job ${job.id}: podcast ${job.data.podcastId}`);
+		await generatePodcast(job.data.podcastId);
+	},
+	{ connection, concurrency: 2 },
+);
+
+podcastWorker.on("completed", (job) => console.log(`✅ job ${job.id} completed`));
+podcastWorker.on("failed", (job, err) => console.error(`❌ job ${job?.id} failed:`, err.message));
+
+console.log("👷 Worker started (ingest-source, generate-roadmap, generate-podcast). Waiting for jobs...");

@@ -25,6 +25,7 @@ model Notebook {
   updatedAt        DateTime @updatedAt
   sources          Source[]
   roadmaps         Roadmap[]
+  podcasts         Podcast[]
 }
 
 enum SourceType {
@@ -83,6 +84,27 @@ model Roadmap {
   topic        String? // the concept/topic the user picked to scope generation to
   errorMessage String?
   concepts     Json? // [{ title, summary, orderRank, citations: [{ sourceId, chunkId, timestampSec }] }]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+enum PodcastStatus {
+  PENDING
+  GENERATING
+  READY
+  FAILED
+}
+
+model Podcast {
+  id           String        @id @default(cuid())
+  notebookId   String // a notebook can have many podcasts — kept and listed, not overwritten
+  notebook     Notebook      @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+  status       PodcastStatus @default(PENDING)
+  voice        String // "male" | "female"
+  topic        String? // the concept/topic the user picked to scope the narration to
+  script       String? // generated narration text, shown alongside the audio player
+  audioPath    String? // on-disk path under apps/server/uploads, same convention as PDF/VTT sources
+  errorMessage String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 }

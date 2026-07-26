@@ -24,4 +24,12 @@ export const config = {
 		chunkSize: Number(process.env.CHUNK_SIZE) || 1000,
 		chunkOverlap: Number(process.env.CHUNK_OVERLAP) || 200,
 	},
+	googleTts: {
+		// API-key auth (not a service account) — Google Cloud Text-to-Speech's REST
+		// API accepts a plain `key=` query param, same lightweight pattern as the
+		// YouTube Data API key already used for playlist import.
+		apiKey: process.env.GOOGLE_TTS_API_KEY,
+		voiceNameMale: process.env.GOOGLE_TTS_VOICE_MALE || "en-US-Standard-D",
+		voiceNameFemale: process.env.GOOGLE_TTS_VOICE_FEMALE || "en-US-Standard-F",
+	},
 };

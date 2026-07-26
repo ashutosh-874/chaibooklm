@@ -3,7 +3,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { getOwnedNotebook } from "../lib/ownership.ts";
 import { enqueueRoadmapJob } from "../lib/queue.ts";
-import { suggestRoadmapTopics } from "../lib/roadmapTopics.ts";
+import { suggestTopics } from "../lib/sourceTopics.ts";
 import { requireAuth } from "../middleware/requireAuth.ts";
 
 // mergeParams: this router is mounted at /notebooks/:notebookId/roadmap and
@@ -31,7 +31,7 @@ roadmapRouter.get("/topics", async (req, res) => {
 	const notebook = await getOwnedNotebook(req.params.notebookId as string, req.userId);
 	if (!notebook) return res.status(404).json({ error: "Notebook not found" });
 
-	const topics = await suggestRoadmapTopics(notebook.id);
+	const topics = await suggestTopics(notebook.id);
 	res.json({ topics });
 });
 

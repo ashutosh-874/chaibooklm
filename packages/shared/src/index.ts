@@ -42,6 +42,13 @@ export interface RoadmapJobData {
 	roadmapId: string;
 }
 
+// BullMQ queue name for podcast generation, shared by the server (enqueue) and worker (consume).
+export const PODCAST_QUEUE_NAME = "generate-podcast";
+
+export interface PodcastJobData {
+	podcastId: string;
+}
+
 // Single shared Prisma client instance, used by both server and worker.
 export * from "./db.ts";
 
